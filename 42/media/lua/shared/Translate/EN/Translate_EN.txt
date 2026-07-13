@@ -1,0 +1,18 @@
+-- ============================================================
+-- Translate_EN.txt  (English — LifeMod)
+-- Provides display text for sandbox option labels.
+-- ============================================================
+
+Sandbox_LifeMod = "LifeMod – Limited Lives",
+Sandbox_LifeMod_EnableSystem = "Enable Life System",
+Sandbox_LifeMod_EnableSystem_tooltip = "Turn the finite lives system on or off. When disabled, the mod does nothing. Multiplayer only.",
+Sandbox_LifeMod_StartingLives = "Starting Lives",
+Sandbox_LifeMod_StartingLives_tooltip = "Number of lives each player begins the season with. Applies to newly enrolled players only.",
+Sandbox_LifeMod_KickOnElimination = "Kick Eliminated Players",
+Sandbox_LifeMod_KickOnElimination_tooltip = "Automatically kick a player when their lives reach zero or when they attempt to reconnect while eliminated.",
+Sandbox_LifeMod_EnablePrivateDeathMessage = "Private Death Messages",
+Sandbox_LifeMod_EnablePrivateDeathMessage_tooltip = "Send a private notification to the player when they die, showing their remaining lives.",
+Sandbox_LifeMod_RemoveFromWhitelistOnElimination = "Remove Eliminated Players from Whitelist",
+Sandbox_LifeMod_RemoveFromWhitelistOnElimination_tooltip = "Automatically remove an eliminated player from the server whitelist, preventing them from reconnecting even if they know the password. Requires whitelist to be enabled on the server.",
+Sandbox_LifeMod_RestoreLives = "Lives Granted on Restore",
+Sandbox_LifeMod_RestoreLives_tooltip = "The number of lives an eliminated player receives when an admin uses '/lifes restore' or the context menu Restore option.",
