@@ -194,6 +194,11 @@ function Admin.onPlayerConnect(player)
         DS.setRecord(steamID, record)
         DS.saveDeferred()
         LOG.logSystem("Admin: new player enrolled — SteamID=" .. steamID .. " | User=" .. username)
+        
+        sendServerCommand(player, LifeMod.MODULE, LifeMod.CMD_LIFE_UPDATE, {
+            lives    = record.lives,
+            maxLives = record.maxLives,
+        })
         return
     end
 
@@ -228,6 +233,11 @@ function Admin.onPlayerConnect(player)
 
     DS.setRecord(steamID, record)
     DS.saveDeferred()
+    
+    sendServerCommand(player, LifeMod.MODULE, LifeMod.CMD_LIFE_UPDATE, {
+        lives    = record.lives,
+        maxLives = record.maxLives or LifeMod.getSandboxCfg("StartingLives", LifeMod.DEFAULT_STARTING_LIVES) or 5,
+    })
 end
 
 -- ============================================================

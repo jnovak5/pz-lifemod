@@ -18,6 +18,9 @@ LifeMod.CMD_LIFE_UPDATE  = "notify_life_update"
 LifeMod.CMD_ELIMINATED   = "notify_eliminated"
 
 -- ── Network commands (client → server) ───────────────────────
+LifeMod.CMD_PLAYER_CONNECT = "player_connect"
+LifeMod.CMD_REQUEST_LIVES  = "request_lives"
+LifeMod.CMD_CONSUME_LIFE   = "consume_life"
 LifeMod.CMD_ADMIN_VIEW    = "admin_view"
 LifeMod.CMD_ADMIN_SET     = "admin_set"
 LifeMod.CMD_ADMIN_RESTORE = "admin_restore"

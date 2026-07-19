@@ -87,7 +87,11 @@ local function _applyElimination(player, record)
         local function doKick()
             -- Re-check player is still connected before kicking
             local ok2 = pcall(function()
-                kickPlayer(player)
+                if disconnect then
+                    disconnect(player)
+                else
+                    error("Kick function not found")
+                end
             end)
             if not ok2 then
                 LOG.logWarn("DeathHandler: kick failed (player may have already disconnected).")
@@ -125,7 +129,7 @@ function DH.handleDeath(character)
     if not LifeMod.isMultiplayerSession() then return end
 
     -- Guard: must be a player, not zombie/NPC
-    if not character or not character:isPlayer() then return end
+    if not character or not instanceof(character, "IsoPlayer") then return end
 
     -- Guard: DataStore must be loaded
     if not DS.isLoaded() then

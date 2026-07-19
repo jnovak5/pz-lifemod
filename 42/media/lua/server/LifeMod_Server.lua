@@ -49,18 +49,8 @@ local function onCharacterDeath(character)
 end
 
 -- ============================================================
--- OnPlayerConnect — elimination gate, enrolment
+-- Removed OnPlayerConnect/Disconnect (Invalid events)
 -- ============================================================
-local function onPlayerConnect(player)
-    Adm.onPlayerConnect(player)
-end
-
--- ============================================================
--- OnPlayerDisconnect — update last-seen, flush dirty data
--- ============================================================
-local function onPlayerDisconnect(player)
-    Adm.onPlayerDisconnect(player)
-end
 
 -- ============================================================
 -- EveryTenMinutes — periodic save + backup rotation
@@ -76,7 +66,72 @@ end
 local function onClientCommand(module, command, player, args)
     if module ~= LifeMod.MODULE then return end
 
-    -- All inbound commands require admin authority — re-validated server-side
+    if command == LifeMod.CMD_PLAYER_CONNECT then
+        Adm.onPlayerConnect(player)
+        return
+    end
+
+    if command == LifeMod.CMD_REQUEST_LIVES then
+        LOG.logSystem("Server: Received CMD_REQUEST_LIVES from " .. tostring(player:getUsername()))
+        local steamID = player:getSteamID()
+        local record = DS.getRecord(steamID)
+        if not record then
+            LOG.logSystem("Server: Creating new record for " .. tostring(player:getUsername()))
+            local defaultLives = LifeMod.getSandboxCfg("StartingLives", LifeMod.DEFAULT_STARTING_LIVES)
+            record = {
+                steamID = steamID,
+                username = player:getUsername(),
+                lives = defaultLives,
+                maxLives = defaultLives,
+                eliminated = false,
+                lastDeath = 0,
+                deathCount = 0
+            }
+            DS.setRecord(steamID, record)
+            DS.saveDeferred()
+        end
+        
+        local defaultLives = LifeMod.getSandboxCfg("StartingLives", LifeMod.DEFAULT_STARTING_LIVES)
+        local livesToSend = record.lives
+        if livesToSend == nil then
+            livesToSend = defaultLives
+            record.lives = defaultLives
+            DS.saveDeferred()
+            LOG.logWarn("Server: Fixed corrupted nil lives for " .. tostring(player:getUsername()))
+        end
+        local maxL = record.maxLives or defaultLives
+        
+        LOG.logSystem("Server: Sending CMD_LIFE_UPDATE to " .. tostring(player:getUsername()) .. " with lives=" .. tostring(livesToSend))
+        sendServerCommand(player, LifeMod.MODULE, LifeMod.CMD_LIFE_UPDATE, {
+            lives = livesToSend,
+            maxLives = maxL,
+        })
+        return
+    end
+
+    if command == LifeMod.CMD_CONSUME_LIFE then
+        local steamID = player:getSteamID()
+        local record = DS.getRecord(steamID)
+        if record and record.lives > 0 then
+            record.lives = record.lives - 1
+            record.deathCount = (record.deathCount or 0) + 1
+            DS.saveDeferred()
+            
+            sendServerCommand(player, LifeMod.MODULE, LifeMod.CMD_LIFE_UPDATE, {
+                lives = record.lives,
+                maxLives = record.maxLives,
+            })
+            
+            LOG.logSystem("Server: Player " .. tostring(player:getUsername()) .. " consumed a life via resurrection. Remaining: " .. tostring(record.lives))
+            
+            if record.lives <= 0 then
+                DH.eliminatePlayer(player, record)
+            end
+        end
+        return
+    end
+
+    -- All other inbound commands require admin authority — re-validated server-side
     if not LifeMod.isAuthorised(player) then
         LOG.logWarn("Server: unauthorised OnClientCommand from " ..
                     tostring(player:getUsername()) .. " cmd=" .. tostring(command))
@@ -161,11 +216,9 @@ end
 Events.OnServerStarted.Add(onServerStarted)
 Events.OnPlayerDeath.Add(onPlayerDeath)
 Events.OnCharacterDeath.Add(onCharacterDeath)
-Events.OnPlayerConnect.Add(onPlayerConnect)
-Events.OnPlayerDisconnect.Add(onPlayerDisconnect)
 Events.EveryTenMinutes.Add(onEveryTenMinutes)
 Events.OnClientCommand.Add(onClientCommand)
 Events.OnServerCommand.Add(onServerCommand)
-Events.OnPlayerSay.Add(onPlayerSay)
+
 
 LOG.logSystem("LifeMod_Server.lua loaded — events registered.")

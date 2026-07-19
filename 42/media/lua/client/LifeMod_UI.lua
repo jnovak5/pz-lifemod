@@ -13,7 +13,7 @@ LifeMod.UI = LifeMod.UI or {}
 local function sendAdminCmd(command, targetSteamID, extraArgs)
     local args = extraArgs or {}
     args.targetSteamID = targetSteamID
-    sendClientCommand(LifeMod.MODULE, command, args)
+    sendClientCommand(getPlayer(), LifeMod.MODULE, command, args)
 end
 
 -- ── Internal: open a numeric input dialog ────────────────────
