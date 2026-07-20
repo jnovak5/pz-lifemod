@@ -113,12 +113,17 @@ local function checkPlayerHealth(player)
                 if cell then
                     local zList = cell:getZombieList()
                     if zList then
+                        local pushed = 0
                         for i=0, zList:size()-1 do
                             local zombie = zList:get(i)
                             if zombie and zombie:DistTo(player) < 2.5 then
                                 zombie:setStaggerBack(true)
                                 zombie:setKnockedDown(true)
+                                pushed = pushed + 1
                             end
+                        end
+                        if pushed > 0 then
+                            sendClientCommand(player, AuroraLife.MODULE, AuroraLife.CMD_LOG_EVENT, { message = "Knocked back " .. pushed .. " zombies upon safety net expiration." })
                         end
                     end
                 end
@@ -319,12 +324,19 @@ local function checkPlayerHealth(player)
             if cell then
                 local zList = cell:getZombieList()
                 if zList then
+                    local pushed = 0
                     for i=0, zList:size()-1 do
                         local zombie = zList:get(i)
                         if zombie and zombie:DistTo(player) < 2.5 then
                             zombie:setStaggerBack(true)
                             zombie:setKnockedDown(true)
+                            pushed = pushed + 1
                         end
+                    end
+                    if pushed > 0 then
+                        sendClientCommand(player, AuroraLife.MODULE, AuroraLife.CMD_LOG_EVENT, { message = "Safety Net Triggered (Health: " .. bodyHealth .. "). Knocked back " .. pushed .. " zombies." })
+                    else
+                        sendClientCommand(player, AuroraLife.MODULE, AuroraLife.CMD_LOG_EVENT, { message = "Safety Net Triggered (Health: " .. bodyHealth .. "). No zombies in immediate range." })
                     end
                 end
             end

@@ -105,10 +105,7 @@ local function onFillWorldObjectContextMenu(playerIndex, context, worldObjects, 
     for i = 1, #worldObjects do
         local obj = worldObjects[i]
         if obj and obj.isPlayer and obj:isPlayer() then
-            -- Don't show the menu for the admin's own character
-            if obj ~= localPlayer then
-                buildSubMenu(context, obj)
-            end
+            buildSubMenu(context, obj)
         end
     end
 end
