@@ -1,0 +1,15 @@
+Sandbox_EN = {
+    Sandbox_AuroraLife = "AuroraLife",
+    Sandbox_AuroraLife_EnableSystem = "Enable Life System",
+    Sandbox_AuroraLife_EnableSystem_tooltip = "Turn the finite lives system on or off. When disabled, the mod does nothing. Multiplayer only.",
+    Sandbox_AuroraLife_StartingLives = "Starting Lives",
+    Sandbox_AuroraLife_StartingLives_tooltip = "Number of lives each player begins the season with. Applies to newly enrolled players only.",
+    Sandbox_AuroraLife_KickOnElimination = "Kick Eliminated Players",
+    Sandbox_AuroraLife_KickOnElimination_tooltip = "Automatically kick a player when their lives reach zero or when they attempt to reconnect while eliminated.",
+    Sandbox_AuroraLife_EnablePrivateDeathMessage = "Private Death Messages",
+    Sandbox_AuroraLife_EnablePrivateDeathMessage_tooltip = "Send a private notification to the player when they die, showing their remaining lives.",
+    Sandbox_AuroraLife_RemoveFromWhitelistOnElimination = "Remove Eliminated Players from Whitelist",
+    Sandbox_AuroraLife_RemoveFromWhitelistOnElimination_tooltip = "Automatically remove an eliminated player from the server whitelist, preventing them from reconnecting even if they know the password. Requires whitelist to be enabled on the server.",
+    Sandbox_AuroraLife_RestoreLives = "Lives Granted on Restore",
+    Sandbox_AuroraLife_RestoreLives_tooltip = "The number of lives an eliminated player receives when an admin uses '/lifes restore' or the context menu Restore option.",
+}

@@ -1,12 +1,12 @@
 -- ============================================================
--- LifeMod_SandboxVars.lua
--- Sandbox option definitions for LifeMod.
+-- AuroraLife_SandboxVars.lua
+-- Sandbox option definitions for AuroraLife.
 -- These appear in the Sandbox Settings panel in-game and in
 -- the server's SandboxVars.lua configuration file.
 --
 -- Access at runtime:
---   SandboxVars.LifeMod.StartingLives
---   SandboxVars.LifeMod.EnableSystem
+--   SandboxVars.AuroraLife.StartingLives
+--   SandboxVars.AuroraLife.EnableSystem
 --   etc.
 -- ============================================================
 
@@ -15,8 +15,8 @@ VERSION = 1,
 option EnableSystem {
     type        = boolean,
     default     = true,
-    page        = LifeMod,
-    translation = LifeMod_EnableSystem,
+    page        = AuroraLife,
+    translation = AuroraLife_EnableSystem,
 }
 
 option StartingLives {
@@ -24,29 +24,29 @@ option StartingLives {
     default     = 5,
     min         = 1,
     max         = 99,
-    page        = LifeMod,
-    translation = LifeMod_StartingLives,
+    page        = AuroraLife,
+    translation = AuroraLife_StartingLives,
 }
 
 option KickOnElimination {
     type        = boolean,
     default     = true,
-    page        = LifeMod,
-    translation = LifeMod_KickOnElimination,
+    page        = AuroraLife,
+    translation = AuroraLife_KickOnElimination,
 }
 
 option EnablePrivateDeathMessage {
     type        = boolean,
     default     = true,
-    page        = LifeMod,
-    translation = LifeMod_EnablePrivateDeathMessage,
+    page        = AuroraLife,
+    translation = AuroraLife_EnablePrivateDeathMessage,
 }
 
 option RemoveFromWhitelistOnElimination {
     type        = boolean,
     default     = false,
-    page        = LifeMod,
-    translation = LifeMod_RemoveFromWhitelistOnElimination,
+    page        = AuroraLife,
+    translation = AuroraLife_RemoveFromWhitelistOnElimination,
 }
 
 option RestoreLives {
@@ -54,6 +54,6 @@ option RestoreLives {
     default     = 1,
     min         = 1,
     max         = 99,
-    page        = LifeMod,
-    translation = LifeMod_RestoreLives,
+    page        = AuroraLife,
+    translation = AuroraLife_RestoreLives,
 }

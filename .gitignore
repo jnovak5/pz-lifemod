@@ -29,3 +29,6 @@ Logs/
 *.log
 *.tmp
 *.bak
+
+# Server Data files
+AuroraLife_*.json

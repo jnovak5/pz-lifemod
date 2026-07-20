@@ -1,19 +1,19 @@
 -- ============================================================
--- LifeMod_UI.lua
+-- AuroraLife_UI.lua
 -- Client-side admin context menu.
 -- Visible ONLY to players with admin/moderator access.
 -- All sensitive operations are validated server-side.
 -- ============================================================
 
-require "LifeMod_Shared"
+require "AuroraLife_Shared"
 
-LifeMod.UI = LifeMod.UI or {}
+AuroraLife.UI = AuroraLife.UI or {}
 
 -- ── Internal: send an admin command to the server ─────────────
 local function sendAdminCmd(command, targetSteamID, extraArgs)
     local args = extraArgs or {}
     args.targetSteamID = targetSteamID
-    sendClientCommand(getPlayer(), LifeMod.MODULE, command, args)
+    sendClientCommand(getPlayer(), AuroraLife.MODULE, command, args)
 end
 
 -- ── Internal: open a numeric input dialog ────────────────────
@@ -41,34 +41,34 @@ local function openNumericDialog(title, onConfirm)
 end
 
 -- ============================================================
--- Build the LifeMod sub-menu for a given online target player
+-- Build the AuroraLife sub-menu for a given online target player
 -- ============================================================
 local function buildSubMenu(context, targetPlayer)
     local targetSteamID = tostring(targetPlayer:getSteamID())
     local targetName    = tostring(targetPlayer:getUsername())
 
     local subMenu = context:getNew(context)
-    context:addSubMenu(context:addOption("[LifeMod] " .. targetName, nil, nil), subMenu)
+    context:addSubMenu(context:addOption("[AuroraLife] " .. targetName, nil, nil), subMenu)
 
     -- ── View Lives ───────────────────────────────────────────
     subMenu:addOption("View Lives", nil, function()
-        sendAdminCmd(LifeMod.CMD_ADMIN_VIEW, targetSteamID)
+        sendAdminCmd(AuroraLife.CMD_ADMIN_VIEW, targetSteamID)
     end)
 
     subMenu:addOptionSeparator()
 
     -- ── Add Life ─────────────────────────────────────────────
     subMenu:addOption("Add Life (+1)", nil, function()
-        sendAdminCmd(LifeMod.CMD_ADMIN_SET, targetSteamID, {
-            action = LifeMod.ACTION_ADD,
+        sendAdminCmd(AuroraLife.CMD_ADMIN_SET, targetSteamID, {
+            action = AuroraLife.ACTION_ADD,
             amount = 1,
         })
     end)
 
     -- ── Remove Life ──────────────────────────────────────────
     subMenu:addOption("Remove Life (-1)", nil, function()
-        sendAdminCmd(LifeMod.CMD_ADMIN_SET, targetSteamID, {
-            action = LifeMod.ACTION_REMOVE,
+        sendAdminCmd(AuroraLife.CMD_ADMIN_SET, targetSteamID, {
+            action = AuroraLife.ACTION_REMOVE,
             amount = 1,
         })
     end)
@@ -76,8 +76,8 @@ local function buildSubMenu(context, targetPlayer)
     -- ── Set Lives (opens input dialog) ───────────────────────
     subMenu:addOption("Set Lives...", nil, function()
         openNumericDialog("Set lives for " .. targetName .. ":", function(amount)
-            sendAdminCmd(LifeMod.CMD_ADMIN_SET, targetSteamID, {
-                action = LifeMod.ACTION_SET,
+            sendAdminCmd(AuroraLife.CMD_ADMIN_SET, targetSteamID, {
+                action = AuroraLife.ACTION_SET,
                 amount = amount,
             })
         end)
@@ -87,7 +87,7 @@ local function buildSubMenu(context, targetPlayer)
 
     -- ── Restore Eliminated Player ─────────────────────────────
     subMenu:addOption("Restore Player (Clear Elimination)", nil, function()
-        sendAdminCmd(LifeMod.CMD_ADMIN_RESTORE, targetSteamID)
+        sendAdminCmd(AuroraLife.CMD_ADMIN_RESTORE, targetSteamID)
     end)
 end
 
@@ -99,7 +99,7 @@ local function onFillWorldObjectContextMenu(playerIndex, context, worldObjects, 
     -- Early exit: only show for admins (client-side display check)
     local localPlayer = getSpecificPlayer(playerIndex)
     if not localPlayer then return end
-    if not LifeMod.isAuthorised(localPlayer) then return end
+    if not AuroraLife.isAuthorised(localPlayer) then return end
 
     -- Find if any world object is a player character
     for i = 1, #worldObjects do

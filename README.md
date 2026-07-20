@@ -1,4 +1,4 @@
-# LifeMod – Limited Lives Reimagined
+# AuroraLife – Limited Lives Reimagined
 
 > A server-authoritative finite lives system for **Project Zomboid Build 42** multiplayer.
 
@@ -10,7 +10,7 @@
 
 ## Overview
 
-LifeMod gives your multiplayer server a **seasonal life system** — players start each season with a finite pool of lives. Death matters, but a single mistake won't permanently remove someone from the server. Once all lives are exhausted the player is **eliminated**, optionally kicked and/or removed from the whitelist.
+AuroraLife gives your multiplayer server a **seasonal life system** — players start each season with a finite pool of lives. Death matters, but a single mistake won't permanently remove someone from the server. Once all lives are exhausted the player is **eliminated**, optionally kicked and/or removed from the whitelist.
 
 Lives are tracked by **SteamID64** and persist across restarts, character recreations, and username changes. The system is fully **server-authoritative**, so clients cannot manipulate their own life count.
 
@@ -36,12 +36,12 @@ Lives are tracked by **SteamID64** and persist across restarts, character recrea
 
 1. Copy the `42/` folder into your Project Zomboid **mods** directory:
    ```
-   %HomePath%\Zomboid\mods\LifeMod\
+   %HomePath%\Zomboid\mods\AuroraLife\
    ```
    The final layout should look like:
    ```
    mods/
-   └── LifeMod/
+   └── AuroraLife/
        ├── mod.info
        └── media/
            └── lua/
@@ -50,14 +50,14 @@ Lives are tracked by **SteamID64** and persist across restarts, character recrea
                ├── shared/
                └── scripts/
    ```
-2. Enable **LifeMod** in the Mods menu when creating or managing your server.
-3. Configure via **Sandbox Settings → LifeMod** (see [Configuration](#configuration) below).
+2. Enable **AuroraLife** in the Mods menu when creating or managing your server.
+3. Configure via **Sandbox Settings → AuroraLife** (see [Configuration](#configuration) below).
 
 ---
 
 ## Configuration
 
-All options are exposed in the in-game **Sandbox Settings** panel under the *LifeMod* page. They can also be set directly in the server's `SandboxVars.lua`.
+All options are exposed in the in-game **Sandbox Settings** panel under the *AuroraLife* page. They can also be set directly in the server's `SandboxVars.lua`.
 
 | Option | Type | Default | Description |
 |---|---|---|---|
@@ -94,21 +94,21 @@ AuroraLife/
     └── media/
         ├── lua/
         │   ├── client/
-        │   │   ├── LifeMod_Client.lua  # Client-side life HUD & networking
-        │   │   └── LifeMod_UI.lua      # UI panel / life display
+        │   │   ├── AuroraLife_Client.lua  # Client-side life HUD & networking
+        │   │   └── AuroraLife_UI.lua      # UI panel / life display
         │   ├── server/
-        │   │   ├── LifeMod_Server.lua  # Core server logic & event hooks
-        │   │   ├── LifeMod_DataStore.lua # SteamID64-keyed persistent storage
-        │   │   ├── LifeMod_DeathHandler.lua # OnPlayerDeath with cooldown guard
-        │   │   ├── LifeMod_Commands.lua # Admin slash-command parsing
-        │   │   ├── LifeMod_Admin.lua   # Admin action handlers
-        │   │   └── LifeMod_Logger.lua  # Structured server logging
+        │   │   ├── AuroraLife_Server.lua  # Core server logic & event hooks
+        │   │   ├── AuroraLife_DataStore.lua # SteamID64-keyed persistent storage
+        │   │   ├── AuroraLife_DeathHandler.lua # OnPlayerDeath with cooldown guard
+        │   │   ├── AuroraLife_Commands.lua # Admin slash-command parsing
+        │   │   ├── AuroraLife_Admin.lua   # Admin action handlers
+        │   │   └── AuroraLife_Logger.lua  # Structured server logging
         │   └── shared/
-        │       ├── LifeMod_Shared.lua  # Constants, utilities, version
+        │       ├── AuroraLife_Shared.lua  # Constants, utilities, version
         │       └── Translate/EN/
         │           └── Translate_EN.txt # English translations
         └── scripts/
-            └── LifeMod_SandboxVars.lua # Sandbox option definitions
+            └── AuroraLife_SandboxVars.lua # Sandbox option definitions
 ```
 
 ---
@@ -117,7 +117,7 @@ AuroraLife/
 
 - **Project Zomboid**: Build 42 (multiplayer)
 - **Singleplayer**: The system auto-disables itself in singleplayer sessions
-- **Other Mods**: Compatible with most mods; uses a namespaced network module (`LifeMod`) to avoid conflicts
+- **Other Mods**: Compatible with most mods; uses a namespaced network module (`AuroraLife`) to avoid conflicts
 
 ---
 

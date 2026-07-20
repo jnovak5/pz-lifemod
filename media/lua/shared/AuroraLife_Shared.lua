@@ -1,69 +1,69 @@
 -- ============================================================
--- LifeMod_Shared.lua
+-- AuroraLife_Shared.lua
 -- Shared constants, utilities, and version info.
 -- Loaded in BOTH server and client contexts.
 -- ============================================================
 
-LifeMod = LifeMod or {}
+AuroraLife = AuroraLife or {}
 
 -- ── Version ──────────────────────────────────────────────────
-LifeMod.VERSION       = "1.0.0"
-LifeMod.VERSION_INT   = 1000          -- integer for comparison checks
+AuroraLife.VERSION       = "1.0.0"
+AuroraLife.VERSION_INT   = 1000          -- integer for comparison checks
 
 -- ── Network module name (must be unique across all mods) ─────
-LifeMod.MODULE        = "LifeMod"
+AuroraLife.MODULE        = "AuroraLife"
 
 -- ── Network commands  (server → client) ──────────────────────
-LifeMod.CMD_LIFE_UPDATE  = "notify_life_update"
-LifeMod.CMD_ELIMINATED   = "notify_eliminated"
+AuroraLife.CMD_LIFE_UPDATE  = "notify_life_update"
+AuroraLife.CMD_ELIMINATED   = "notify_eliminated"
 
 -- ── Network commands (client → server) ───────────────────────
-LifeMod.CMD_PLAYER_CONNECT = "player_connect"
-LifeMod.CMD_REQUEST_LIVES  = "request_lives"
-LifeMod.CMD_CONSUME_LIFE   = "consume_life"
-LifeMod.CMD_ADMIN_VIEW    = "admin_view"
-LifeMod.CMD_ADMIN_SET     = "admin_set"
-LifeMod.CMD_ADMIN_RESTORE = "admin_restore"
+AuroraLife.CMD_PLAYER_CONNECT = "player_connect"
+AuroraLife.CMD_REQUEST_LIVES  = "request_lives"
+AuroraLife.CMD_CONSUME_LIFE   = "consume_life"
+AuroraLife.CMD_ADMIN_VIEW    = "admin_view"
+AuroraLife.CMD_ADMIN_SET     = "admin_set"
+AuroraLife.CMD_ADMIN_RESTORE = "admin_restore"
 
 -- ── Admin set actions ────────────────────────────────────────
-LifeMod.ACTION_VIEW   = "view"
-LifeMod.ACTION_ADD    = "add"
-LifeMod.ACTION_REMOVE = "remove"
-LifeMod.ACTION_SET    = "set"
-LifeMod.ACTION_RESTORE= "restore"
+AuroraLife.ACTION_VIEW   = "view"
+AuroraLife.ACTION_ADD    = "add"
+AuroraLife.ACTION_REMOVE = "remove"
+AuroraLife.ACTION_SET    = "set"
+AuroraLife.ACTION_RESTORE= "restore"
 
 -- ── Access levels allowed to use admin commands ───────────────
 -- Build 42 access level strings.  Moderator included by default.
-LifeMod.ADMIN_ACCESS_LEVELS = {
+AuroraLife.ADMIN_ACCESS_LEVELS = {
     ["Admin"]     = true,
     ["Moderator"] = true,
 }
 
 -- ── Hard limits ───────────────────────────────────────────────
-LifeMod.MAX_LIVES_HARD_CAP = 99          -- absolute ceiling for any lives value
-LifeMod.MIN_LIVES          = 0
+AuroraLife.MAX_LIVES_HARD_CAP = 99          -- absolute ceiling for any lives value
+AuroraLife.MIN_LIVES          = 0
 
 -- ── Death cooldown window (seconds) ──────────────────────────
 -- Duplicate OnPlayerDeath events within this window are suppressed.
-LifeMod.DEATH_COOLDOWN_SECS = 5
+AuroraLife.DEATH_COOLDOWN_SECS = 5
 
 -- ── Logging prefix ───────────────────────────────────────────
-LifeMod.LOG_TAG = "[LIFEMOD]"
+AuroraLife.LOG_TAG = "[LIFEMOD]"
 
 -- ── Default sandbox fallbacks (used when SandboxVars not ready)
-LifeMod.DEFAULT_STARTING_LIVES                   = 5
-LifeMod.DEFAULT_ENABLE_SYSTEM                    = true
-LifeMod.DEFAULT_KICK_ON_ELIMINATION              = true
-LifeMod.DEFAULT_PRIVATE_DEATH_MESSAGE            = true
-LifeMod.DEFAULT_RESTORE_LIVES                    = 1    -- lives given by /lifes restore
-LifeMod.DEFAULT_REMOVE_WHITELIST_ON_ELIMINATION  = false
+AuroraLife.DEFAULT_STARTING_LIVES                   = 5
+AuroraLife.DEFAULT_ENABLE_SYSTEM                    = true
+AuroraLife.DEFAULT_KICK_ON_ELIMINATION              = true
+AuroraLife.DEFAULT_PRIVATE_DEATH_MESSAGE            = true
+AuroraLife.DEFAULT_RESTORE_LIVES                    = 1    -- lives given by /lifes restore
+AuroraLife.DEFAULT_REMOVE_WHITELIST_ON_ELIMINATION  = false
 
 -- ============================================================
 -- Utility: safe sandbox config reader
 -- Returns the sandbox value or the supplied default.
 -- ============================================================
-function LifeMod.getSandboxCfg(key, default)
-    local ok, sv = pcall(function() return SandboxVars.LifeMod end)
+function AuroraLife.getSandboxCfg(key, default)
+    local ok, sv = pcall(function() return SandboxVars.AuroraLife end)
     if ok and sv and sv[key] ~= nil then
         return sv[key]
     end
@@ -74,16 +74,16 @@ end
 -- Utility: check whether a player object has admin access
 -- Works both client-side (own player) and server-side.
 -- ============================================================
-function LifeMod.isAuthorised(player)
+function AuroraLife.isAuthorised(player)
     if not player then return false end
     local level = player:getAccessLevel()
-    return LifeMod.ADMIN_ACCESS_LEVELS[level] == true
+    return AuroraLife.ADMIN_ACCESS_LEVELS[level] == true
 end
 
 -- ============================================================
 -- Utility: clamp integer to [lo, hi]
 -- ============================================================
-function LifeMod.clamp(value, lo, hi)
+function AuroraLife.clamp(value, lo, hi)
     return math.max(lo, math.min(hi, value))
 end
 
@@ -92,7 +92,7 @@ end
 -- Server-side: isMultiplayer() exists in PZ Build 42.
 -- Used to auto-disable the system in singleplayer.
 -- ============================================================
-function LifeMod.isMultiplayerSession()
+function AuroraLife.isMultiplayerSession()
     local ok, result = pcall(function()
         return isMultiplayer and isMultiplayer()
     end)
@@ -103,7 +103,7 @@ end
 -- Utility: ISO-8601 timestamp string (server-side only)
 -- Falls back to epoch seconds on client.
 -- ============================================================
-function LifeMod.timestamp()
+function AuroraLife.timestamp()
     -- getGameTime():getRealworldSecondsSinceEpoch() may not exist on all builds;
     -- use os.date as a reliable cross-platform fallback.
     local ok, result = pcall(function()
@@ -116,10 +116,10 @@ end
 -- ============================================================
 -- Utility: get the configurable restore lives amount
 -- ============================================================
-function LifeMod.getRestoreLives()
-    return LifeMod.clamp(
-        LifeMod.getSandboxCfg("RestoreLives", LifeMod.DEFAULT_RESTORE_LIVES),
+function AuroraLife.getRestoreLives()
+    return AuroraLife.clamp(
+        AuroraLife.getSandboxCfg("RestoreLives", AuroraLife.DEFAULT_RESTORE_LIVES),
         1,
-        LifeMod.MAX_LIVES_HARD_CAP
+        AuroraLife.MAX_LIVES_HARD_CAP
     )
 end

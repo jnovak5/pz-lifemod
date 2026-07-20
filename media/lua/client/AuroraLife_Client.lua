@@ -1,18 +1,18 @@
 -- ============================================================
--- LifeMod_Client.lua
+-- AuroraLife_Client.lua
 -- Client-side receiver for server notifications.
 -- ONLY displays messages to the local player.
 -- Cannot modify lives, elimination status, or any game state.
 -- ============================================================
 
-require "LifeMod_Shared"
+require "AuroraLife_Shared"
 require "ISUI/ISCharacterScreen"
 
-LifeMod.Client = LifeMod.Client or {}
+AuroraLife.Client = AuroraLife.Client or {}
 
 -- ── Store local player life data ───────────────────────────────
-LifeMod.Client.lives = nil
-LifeMod.Client.maxLives = nil
+AuroraLife.Client.lives = nil
+AuroraLife.Client.maxLives = nil
 
 local function printToChat(text, r, g, b)
     -- Display a halo note over the player's head instead of writing to the chat box.
@@ -24,27 +24,27 @@ local function printToChat(text, r, g, b)
 end
 
 local function showMessage(text)
-    printToChat("[LifeMod] " .. text, 0.2, 0.8, 0.2)
+    printToChat("[AuroraLife] " .. text, 0.2, 0.8, 0.2)
 end
 
 local function showEliminationMessage(text)
-    printToChat("[LifeMod — ELIMINATED] " .. text, 1.0, 0.15, 0.15)
+    printToChat("[AuroraLife — ELIMINATED] " .. text, 1.0, 0.15, 0.15)
 end
 
 -- ============================================================
 -- OnServerCommand — receive messages sent by the server
--- Only handles LifeMod module commands.
+-- Only handles AuroraLife module commands.
 -- ============================================================
 local function onServerCommand(module, command, args)
-    if module ~= LifeMod.MODULE then return end
+    if module ~= AuroraLife.MODULE then return end
 
     -- ── Life update notification ──────────────────────────────
-    if command == LifeMod.CMD_LIFE_UPDATE then
-        print("[LifeMod] Client received CMD_LIFE_UPDATE!")
+    if command == AuroraLife.CMD_LIFE_UPDATE then
+        print("[AuroraLife] Client received CMD_LIFE_UPDATE!")
         if args and args.lives then
-            LifeMod.Client.lives = args.lives
-            LifeMod.Client.maxLives = args.maxLives
-            print("[LifeMod] Client lives set to: " .. tostring(LifeMod.Client.lives))
+            AuroraLife.Client.lives = args.lives
+            AuroraLife.Client.maxLives = args.maxLives
+            print("[AuroraLife] Client lives set to: " .. tostring(AuroraLife.Client.lives))
         end
         local msg = args and args.message
         if msg then
@@ -52,7 +52,7 @@ local function onServerCommand(module, command, args)
         end
 
     -- ── Elimination notification ──────────────────────────────
-    elseif command == LifeMod.CMD_ELIMINATED then
+    elseif command == AuroraLife.CMD_ELIMINATED then
         local msg = (args and args.message) or
                     "You have been eliminated. Contact a server administrator."
         showEliminationMessage(msg)
@@ -79,7 +79,7 @@ local function onCreatePlayer(playerIndex)
     local player = getSpecificPlayer(playerIndex) or getPlayer()
     if player and player:isLocalPlayer() then
         -- Send initialization command to the server so it knows we connected
-        sendClientCommand(player, LifeMod.MODULE, LifeMod.CMD_PLAYER_CONNECT, {})
+        sendClientCommand(player, AuroraLife.MODULE, AuroraLife.CMD_PLAYER_CONNECT, {})
     end
 end
 Events.OnCreatePlayer.Add(onCreatePlayer)
@@ -87,9 +87,9 @@ Events.OnCreatePlayer.Add(onCreatePlayer)
 -- ============================================================
 -- True Resurrection: Intercept Death
 -- ============================================================
-LifeMod.Client.safetyNetEndTime = 0
-LifeMod.Client.lastHealthCheckTime = 0
-LifeMod.Client.lastSafetyNetWarning = 0
+AuroraLife.Client.safetyNetEndTime = 0
+AuroraLife.Client.lastHealthCheckTime = 0
+AuroraLife.Client.lastSafetyNetWarning = 0
 
 local function checkPlayerHealth(player)
     if not player or not player:isLocalPlayer() then return end
@@ -97,38 +97,43 @@ local function checkPlayerHealth(player)
     local currentTime = os.time()
 
     -- ── 1. Safety Net Timer ──
-    if LifeMod.Client.safetyNetEndTime > 0 then
-        if currentTime > LifeMod.Client.safetyNetEndTime then
-            LifeMod.Client.safetyNetEndTime = 0
+    if AuroraLife.Client.safetyNetEndTime > 0 then
+        if currentTime > AuroraLife.Client.safetyNetEndTime then
+            AuroraLife.Client.safetyNetEndTime = 0
             player:setGodMod(false)
+            player:setGhostMode(false)
             showMessage("Your safety net has expired. Be careful!")
         else
-            local remaining = LifeMod.Client.safetyNetEndTime - currentTime
-            if remaining <= 5 and currentTime > LifeMod.Client.lastSafetyNetWarning then
-                LifeMod.Client.lastSafetyNetWarning = currentTime
+            local remaining = AuroraLife.Client.safetyNetEndTime - currentTime
+            if remaining <= 5 and currentTime > AuroraLife.Client.lastSafetyNetWarning then
+                AuroraLife.Client.lastSafetyNetWarning = currentTime
                 showMessage("Safety net expires in " .. remaining .. " seconds!")
             end
+            
+            -- Keep health full and exit early so we don't consume another life while invulnerable
+            player:getBodyDamage():RestoreToFullHealth()
+            return
         end
     end
 
     -- Throttle check to avoid excessive processing (check 10x a second)
     local curTimeMs = getTimestampMs()
-    if curTimeMs - LifeMod.Client.lastHealthCheckTime < 100 then return end
+    if curTimeMs - AuroraLife.Client.lastHealthCheckTime < 100 then return end
     -- Only monitor local player
     if player ~= getPlayer() then return end
     
     -- If we haven't received our life count yet, request it and abort this tick
-    if LifeMod.Client.lives == nil then 
-        if curTimeMs - (LifeMod.Client.lastRequestTime or 0) > 1000 then
-            LifeMod.Client.lastRequestTime = curTimeMs
-            print("[LifeMod] checkPlayerHealth: lives is nil. Requesting lives from server...")
-            sendClientCommand(player, LifeMod.MODULE, LifeMod.CMD_REQUEST_LIVES, {})
+    if AuroraLife.Client.lives == nil then 
+        if curTimeMs - (AuroraLife.Client.lastRequestTime or 0) > 1000 then
+            AuroraLife.Client.lastRequestTime = curTimeMs
+            print("[AuroraLife] checkPlayerHealth: lives is nil. Requesting lives from server...")
+            sendClientCommand(player, AuroraLife.MODULE, AuroraLife.CMD_REQUEST_LIVES, {})
         end
         return 
     end
     
     -- Don't intercept if they are out of lives
-    if LifeMod.Client.lives <= 0 then return end
+    if AuroraLife.Client.lives <= 0 then return end
 
     if player:isDead() then return end
 
@@ -163,28 +168,26 @@ local function checkPlayerHealth(player)
         bd:setInfected(false)
         bd:setInfectionTime(-1.0)
         bd:setInfectionMortalityDuration(-1.0)
-        bd:setInfectionLevel(0)
-        bd:setFakeInfectionLevel(0)
         bd:setIsFakeInfected(false)
         
         -- Restore overall health
         bd:RestoreToFullHealth()
         
-        -- Make player invulnerable for the safety net duration (30 seconds)
+        -- Make player invulnerable and untargetable for the safety net duration (30 seconds)
         player:setGodMod(true)
-        LifeMod.Client.safetyNetEndTime = currentTime + 30
-        LifeMod.Client.lastSafetyNetWarning = 0
+        player:setGhostMode(true)
+        AuroraLife.Client.safetyNetEndTime = currentTime + 30
+        AuroraLife.Client.lastSafetyNetWarning = 0
         player:getBodyDamage():setInfectionMortalityDuration(-1)
         player:getBodyDamage():setInfectionTime(-1)
-        player:getBodyDamage():setInfectionLevel(0)
 
         showMessage("You suffered a lethal injury but a life was consumed! You are invulnerable for 30 seconds.")
         
         -- Instantly deduct a life locally to prevent double-triggering before server responds
-        LifeMod.Client.lives = LifeMod.Client.lives - 1
+        AuroraLife.Client.lives = AuroraLife.Client.lives - 1
         
         -- Tell server to deduct a life
-        sendClientCommand(player, LifeMod.MODULE, LifeMod.CMD_CONSUME_LIFE, {})
+        sendClientCommand(player, AuroraLife.MODULE, AuroraLife.CMD_CONSUME_LIFE, {})
     end
 end
 
@@ -192,7 +195,7 @@ local function onPlayerJoined(playerIndex)
     local player = getSpecificPlayer(playerIndex) or getPlayer()
     -- Request lives when the player character is fully instantiated and networked
     if player and player:isLocalPlayer() then
-        sendClientCommand(player, LifeMod.MODULE, LifeMod.CMD_REQUEST_LIVES, {})
+        sendClientCommand(player, AuroraLife.MODULE, AuroraLife.CMD_REQUEST_LIVES, {})
     end
 end
 Events.OnCreatePlayer.Add(onPlayerJoined)
@@ -213,8 +216,8 @@ local function initializeUIHooks()
 
         -- Only draw if we are rendering the local player's info tab
         if self.char and self.char == getPlayer() then
-            local lives = LifeMod.Client.lives
-            local maxLives = LifeMod.Client.maxLives
+            local lives = AuroraLife.Client.lives
+            local maxLives = AuroraLife.Client.maxLives
 
             if lives ~= nil and maxLives ~= nil then
                 -- Calculate X coordinate dynamically to match vanilla layout
@@ -242,7 +245,7 @@ local function initializeUIHooks()
                     z = z + BUTTON_HGT
                 end
                 
-                -- Draw the LifeMod counter precisely underneath the last drawn vanilla stat
+                -- Draw the AuroraLife counter precisely underneath the last drawn vanilla stat
                 self:drawTextRight("Lives Remaining", x, z, 1, 1, 1, 1, UIFont.Small)
                 
                 -- Color code the lives text: Green if plenty, Orange if low, Red if 0
@@ -263,4 +266,3 @@ local function initializeUIHooks()
 end
 
 Events.OnGameStart.Add(initializeUIHooks)
-Events.OnPlayerUpdate.Add(checkPlayerHealth)
