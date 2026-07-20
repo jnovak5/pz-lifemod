@@ -1,14 +1,3 @@
--- ============================================================
--- AuroraLife_SandboxVars.lua
--- Sandbox option definitions for AuroraLife.
--- These appear in the Sandbox Settings panel in-game and in
--- the server's SandboxVars.lua configuration file.
---
--- Access at runtime:
---   SandboxVars.AuroraLife.StartingLives
---   SandboxVars.AuroraLife.EnableSystem
---   etc.
--- ============================================================
 
 VERSION = 1,
 
