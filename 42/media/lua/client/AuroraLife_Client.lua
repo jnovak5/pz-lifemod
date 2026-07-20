@@ -134,7 +134,7 @@ local function checkPlayerHealth(player)
             local remaining = AuroraLife.Client.safetyNetEndTime - currentTime
             if remaining <= 10 and currentTime > AuroraLife.Client.lastSafetyNetWarning then
                 AuroraLife.Client.lastSafetyNetWarning = currentTime
-                showMessage("Safety net expires in " .. remaining .. " seconds!")
+                showMessage("Safety net expires in " .. string.format("%.2f", remaining) .. " seconds!")
             end
             
             -- Aggressively force state continuously to prevent engine death sequences
