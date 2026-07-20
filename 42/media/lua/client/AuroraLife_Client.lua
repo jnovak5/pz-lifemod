@@ -102,6 +102,25 @@ local function checkPlayerHealth(player)
             AuroraLife.Client.safetyNetEndTime = 0
             player:setGodMod(false)
             player:setGhostMode(false)
+            sendClientCommand(player, AuroraLife.MODULE, AuroraLife.CMD_SET_GODMODE, { enable = false })
+            
+            -- Adrenaline Knockback on expiration to give them space when God Mode drops
+            pcall(function()
+                local cell = player:getCell()
+                if cell then
+                    local zList = cell:getZombieList()
+                    if zList then
+                        for i=0, zList:size()-1 do
+                            local zombie = zList:get(i)
+                            if zombie and zombie:DistTo(player) < 2.5 then
+                                zombie:setStaggerBack(true)
+                                zombie:setKnockedDown(true)
+                            end
+                        end
+                    end
+                end
+            end)
+            
             showMessage("Your safety net has expired. Be careful!")
         else
             local remaining = AuroraLife.Client.safetyNetEndTime - currentTime
@@ -110,8 +129,65 @@ local function checkPlayerHealth(player)
                 showMessage("Safety net expires in " .. remaining .. " seconds!")
             end
             
-            -- Keep health full and exit early so we don't consume another life while invulnerable
-            player:getBodyDamage():RestoreToFullHealth()
+            -- Aggressively force state continuously to prevent engine death sequences
+            -- Helper to safely call Java methods without spamming console errors if they don't exist
+            local function safeCall(obj, method, ...)
+                if obj and obj[method] then pcall(function(...) obj[method](obj, ...) end, ...) end
+            end
+            
+            local bd = player:getBodyDamage()
+            if not bd then return end
+            
+            -- Continuously clear every single injury type from every body part
+            for i=0, bd:getBodyParts():size()-1 do
+                local bp = bd:getBodyParts():get(i)
+                safeCall(bp, "RestoreToFullHealth")
+                safeCall(bp, "SetBitten", false)
+                safeCall(bp, "SetInfected", false)
+                safeCall(bp, "SetFakeInfected", false)
+                safeCall(bp, "setBleedingTime", 0)
+                safeCall(bp, "setDeepWounded", false)
+                safeCall(bp, "setDeepWoundTime", 0)
+                safeCall(bp, "setScratched", false, true)
+                safeCall(bp, "setScratchTime", 0)
+                safeCall(bp, "setCut", false)
+                safeCall(bp, "setCutTime", 0)
+                safeCall(bp, "setBurnTime", 0)
+                safeCall(bp, "setNeedBurnWash", false)
+                safeCall(bp, "setHaveGlass", false)
+                safeCall(bp, "setBiteTime", 0)
+                safeCall(bp, "setBleeding", false)
+            end
+            
+            safeCall(bd, "RestoreToFullHealth")
+            safeCall(bd, "setOverallBodyHealth", 100)
+            safeCall(player, "setHealth", 1.0)
+            safeCall(player, "setGodMod", true)
+            safeCall(player, "setGhostMode", true)
+            
+            local curTimeMs = getTimestampMs()
+            if not AuroraLife.Client.lastGodModeSync or curTimeMs - AuroraLife.Client.lastGodModeSync > 1000 then
+                AuroraLife.Client.lastGodModeSync = curTimeMs
+                sendClientCommand(player, AuroraLife.MODULE, AuroraLife.CMD_SET_GODMODE, { enable = true })
+                sendClientCommand(player, AuroraLife.MODULE, AuroraLife.CMD_HEAL_PLAYER, {})
+            end
+            
+            if player:getModData() then player:getModData().isDead = false end
+            safeCall(player, "setAttackedByZombies", false)
+            safeCall(player, "setDeathDragDown", false)
+            safeCall(player, "setPlayingDeathSound", false)
+            safeCall(player, "clearMaxHitReaction")
+            safeCall(player, "setHitReaction", "")
+            
+            -- Aggressively clear fatal state machine variables
+            safeCall(player, "setVariable", "isDying", "false")
+            safeCall(player, "setVariable", "HitReaction", "")
+            safeCall(player, "setVariable", "ZombieHitReaction", "")
+            safeCall(player, "setVariable", "BumpFall", "false")
+            safeCall(player, "clearVariable", "HitReaction")
+            safeCall(player, "clearVariable", "BumpFall")
+            
+            safeCall(player, "setActionContextState", "idle")
             return
         end
     end
@@ -122,15 +198,22 @@ local function checkPlayerHealth(player)
     -- Only monitor local player
     if player ~= getPlayer() then return end
     
-    -- If we haven't received our life count yet, request it and abort this tick
-    if AuroraLife.Client.lives == nil then 
-        if curTimeMs - (AuroraLife.Client.lastRequestTime or 0) > 1000 then
-            AuroraLife.Client.lastRequestTime = curTimeMs
-            print("[AuroraLife] checkPlayerHealth: lives is nil. Requesting lives from server...")
+    -- Initialize on first tick after 3 seconds
+    if not AuroraLife.Client.hasInitialized then
+        AuroraLife.Client.joinTime = AuroraLife.Client.joinTime or curTimeMs
+        if curTimeMs - AuroraLife.Client.joinTime > 3000 then
+            AuroraLife.Client.hasInitialized = true
+            if not player:getModData().AuroraLife_NewCharClaimed then
+                player:getModData().AuroraLife_NewCharClaimed = true
+                sendClientCommand(player, AuroraLife.MODULE, AuroraLife.CMD_NEW_CHARACTER, {})
+            end
             sendClientCommand(player, AuroraLife.MODULE, AuroraLife.CMD_REQUEST_LIVES, {})
         end
-        return 
+        return
     end
+    
+    -- If we haven't received our life count yet, abort this tick
+    if AuroraLife.Client.lives == nil then return end
     
     -- Don't intercept if they are out of lives
     if AuroraLife.Client.lives <= 0 then return end
@@ -140,9 +223,11 @@ local function checkPlayerHealth(player)
     -- ── 2. Intercept lethal damage ──
     local bodyHealth = player:getBodyDamage():getOverallBodyHealth()
 
-    -- If health drops critically low (below 40 out of 100)
-    -- Increased to 40 because massive horde crits can instantly drop health.
-    if bodyHealth < 40.0 then
+    -- In a multiplayer environment, a network latency buffer is REQUIRED.
+    -- If the threshold is too low (e.g. 15%), a zombie hit simulated by a remote client
+    -- can instantly drop health below 0 and tell the server you died before your God Mode
+    -- network packet has time to arrive. 35% provides a safe 50-100ms latency buffer.
+    if bodyHealth < 35.0 then
         -- Check if it's an inescapable drag-down
         local isDragDown = false
         pcall(function()
@@ -163,51 +248,91 @@ local function checkPlayerHealth(player)
         
         -- Intercept death!
         local bd = player:getBodyDamage()
+        if not bd then return end
         
         -- Completely heal all individual body parts and remove all infections/bleeding
+        -- Helper to safely call Java methods without spamming console errors if they don't exist
+        local function safeCall(obj, method, ...)
+            if obj and obj[method] then pcall(function(...) obj[method](obj, ...) end, ...) end
+        end
+
         -- Completely heal all individual body parts and remove all infections/bleeding
         for i=0, bd:getBodyParts():size()-1 do
             local bp = bd:getBodyParts():get(i)
-            bp:RestoreToFullHealth()
-            bp:setBitten(false)
-            bp:setInfected(false)
-            bp:setFakeInfected(false)
-            bp:setBleedingTime(0)
-            bp:setDeepWounded(false)
-            bp:setDeepWoundTime(0)
-            bp:setScratched(false, true)
-            bp:setScratchTime(0)
-            bp:setCut(false)
-            bp:setCutTime(0)
-            bp:setBurnTime(0)
-            bp:setNeedBurnWash(false)
-            bp:setHaveGlass(false)
-            bp:setBiteTime(0)
+            safeCall(bp, "RestoreToFullHealth")
+            safeCall(bp, "SetBitten", false)
+            safeCall(bp, "SetInfected", false)
+            safeCall(bp, "SetFakeInfected", false)
+            safeCall(bp, "setBleedingTime", 0)
+            safeCall(bp, "setDeepWounded", false)
+            safeCall(bp, "setDeepWoundTime", 0)
+            safeCall(bp, "setScratched", false, true)
+            safeCall(bp, "setScratchTime", 0)
+            safeCall(bp, "setCut", false)
+            safeCall(bp, "setCutTime", 0)
+            safeCall(bp, "setBurnTime", 0)
+            safeCall(bp, "setNeedBurnWash", false)
+            safeCall(bp, "setHaveGlass", false)
+            safeCall(bp, "setBiteTime", 0)
+            safeCall(bp, "setBleeding", false)
         end
         
         -- Cure zombie infection completely so they don't instantly drop dead from the virus
-        bd:setInfected(false)
-        bd:setInfectionTime(-1.0)
-        bd:setInfectionMortalityDuration(-1.0)
-        bd:setIsFakeInfected(false)
-        bd:setInfectionLevel(0)
+        safeCall(bd, "setInfected", false)
+        safeCall(bd, "setInfectionTime", -1.0)
+        safeCall(bd, "setInfectionMortalityDuration", -1.0)
+        safeCall(bd, "setIsFakeInfected", false)
         
         -- Restore overall health
-        bd:RestoreToFullHealth()
-        bd:setOverallBodyHealth(100)
-        player:setHealth(1.0)
+        safeCall(bd, "RestoreToFullHealth")
+        safeCall(bd, "setOverallBodyHealth", 100)
+        safeCall(player, "setHealth", 1.0)
         
-        -- Break drag-down animation if they are being eaten
-        player:setAttackedByZombies(false)
-        player:clearMaxHitReaction()
-        player:setHitReaction("")
-        if player.setEatBodyTarget then
-            pcall(function() player:setEatBodyTarget(nil, nil) end)
-        end
+        -- Aggressively clear isDead flags so they don't die during the safety net
+        if player:getModData() then player:getModData().isDead = false end
+        
+        -- Break drag-down animation if they are being eaten and clear stunlocks
+        safeCall(player, "setAttackedByZombies", false)
+        safeCall(player, "setDeathDragDown", false)
+        safeCall(player, "setPlayingDeathSound", false)
+        safeCall(player, "clearMaxHitReaction")
+        safeCall(player, "setHitReaction", "")
+        
+        -- Aggressively clear fatal state machine variables
+        safeCall(player, "setVariable", "isDying", "false")
+        safeCall(player, "setVariable", "HitReaction", "")
+        safeCall(player, "setVariable", "ZombieHitReaction", "")
+        safeCall(player, "setVariable", "BumpFall", "false")
+        safeCall(player, "clearVariable", "HitReaction")
+        safeCall(player, "clearVariable", "BumpFall")
+        
+        safeCall(player, "setActionContextState", "idle")
+        safeCall(player, "setStaggerTime", 0)
+        safeCall(player, "setEatBodyTarget", nil, nil)
+        
+        -- Adrenaline Knockback: Stagger and knock down nearby zombies to guarantee escape
+        pcall(function()
+            local cell = player:getCell()
+            if cell then
+                local zList = cell:getZombieList()
+                if zList then
+                    for i=0, zList:size()-1 do
+                        local zombie = zList:get(i)
+                        if zombie and zombie:DistTo(player) < 2.5 then
+                            zombie:setStaggerBack(true)
+                            zombie:setKnockedDown(true)
+                        end
+                    end
+                end
+            end
+        end)
         
         -- Make player invulnerable and untargetable for the safety net duration (30 seconds)
-        player:setGodMod(true)
-        player:setGhostMode(true)
+        safeCall(player, "setGodMod", true)
+        safeCall(player, "setGhostMode", true)
+        sendClientCommand(player, AuroraLife.MODULE, AuroraLife.CMD_SET_GODMODE, { enable = true })
+        sendClientCommand(player, AuroraLife.MODULE, AuroraLife.CMD_HEAL_PLAYER, {})
+        AuroraLife.Client.lastGodModeSync = getTimestampMs()
         AuroraLife.Client.safetyNetEndTime = currentTime + 30
         AuroraLife.Client.lastSafetyNetWarning = 0
 
@@ -223,9 +348,8 @@ end
 
 local function onPlayerJoined(playerIndex)
     local player = getSpecificPlayer(playerIndex) or getPlayer()
-    -- Request lives when the player character is fully instantiated and networked
     if player and player:isLocalPlayer() then
-        sendClientCommand(player, AuroraLife.MODULE, AuroraLife.CMD_REQUEST_LIVES, {})
+        -- Initialization is now handled in checkPlayerHealth after a 3-second delay
     end
 end
 Events.OnCreatePlayer.Add(onPlayerJoined)
