@@ -5,7 +5,7 @@ $dest = "c:\MyApps\PZ Mods\AuroraLife"
 Copy-Item -Path "$source\*" -Destination $dest -Recurse -Force -Exclude "*.code-workspace"
 
 # Update mod.info to reset the ID and Name back to the Release version
-$modInfo = "$dest\common\mod.info"
+$modInfo = "$dest\mod.info"
 (Get-Content $modInfo) -replace 'id=AuroraLifeLocal$', 'id=AuroraLife' -replace 'name=AuroraLife \(Local Dev\)', 'name=AuroraLife' | Set-Content $modInfo
 
 Write-Host "Successfully synced AuroraLifeLocal (Development) to AuroraLife (Release)!"
