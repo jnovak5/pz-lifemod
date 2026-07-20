@@ -21,7 +21,7 @@ workshop/
 
 # PZ server test data (if running a local test server in the repo)
 db/
-server/
+/server/
 Saves/
 Logs/
 
