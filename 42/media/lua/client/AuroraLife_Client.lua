@@ -141,18 +141,37 @@ local function checkPlayerHealth(player)
     local bodyHealth = player:getBodyDamage():getOverallBodyHealth()
 
     -- If health drops critically low (below 40 out of 100)
-    -- Increased to 40 because massive horde drag-downs or crits can instantly drop health.
+    -- Increased to 40 because massive horde crits can instantly drop health.
     if bodyHealth < 40.0 then
+        -- Check if it's an inescapable drag-down
+        local isDragDown = false
+        pcall(function()
+            if player:isDeathDragDown() then isDragDown = true end
+        end)
+        
+        -- Fallback heuristic for drag-down detection if the API method is missing
+        if not isDragDown and SandboxVars.Zombies and SandboxVars.Zombies.DragDown then
+            if bodyHealth <= 0.0 and player:getAttackedByZombies() then
+                isDragDown = true
+            end
+        end
+        
+        if isDragDown then
+            -- Bypass the safety net and let the engine kill them naturally so the server can eliminate them
+            return
+        end
+        
         -- Intercept death!
         local bd = player:getBodyDamage()
         
         -- Completely heal all individual body parts and remove all infections/bleeding
+        -- Completely heal all individual body parts and remove all infections/bleeding
         for i=0, bd:getBodyParts():size()-1 do
             local bp = bd:getBodyParts():get(i)
             bp:RestoreToFullHealth()
-            bp:SetBitten(false)
-            bp:SetInfected(false)
-            bp:SetFakeInfected(false)
+            bp:setBitten(false)
+            bp:setInfected(false)
+            bp:setFakeInfected(false)
             bp:setBleedingTime(0)
             bp:setDeepWounded(false)
             bp:setDeepWoundTime(0)
@@ -162,6 +181,8 @@ local function checkPlayerHealth(player)
             bp:setCutTime(0)
             bp:setBurnTime(0)
             bp:setNeedBurnWash(false)
+            bp:setHaveGlass(false)
+            bp:setBiteTime(0)
         end
         
         -- Cure zombie infection completely so they don't instantly drop dead from the virus
@@ -169,17 +190,26 @@ local function checkPlayerHealth(player)
         bd:setInfectionTime(-1.0)
         bd:setInfectionMortalityDuration(-1.0)
         bd:setIsFakeInfected(false)
+        bd:setInfectionLevel(0)
         
         -- Restore overall health
         bd:RestoreToFullHealth()
+        bd:setOverallBodyHealth(100)
+        player:setHealth(1.0)
+        
+        -- Break drag-down animation if they are being eaten
+        player:setAttackedByZombies(false)
+        player:clearMaxHitReaction()
+        player:setHitReaction("")
+        if player.setEatBodyTarget then
+            pcall(function() player:setEatBodyTarget(nil, nil) end)
+        end
         
         -- Make player invulnerable and untargetable for the safety net duration (30 seconds)
         player:setGodMod(true)
         player:setGhostMode(true)
         AuroraLife.Client.safetyNetEndTime = currentTime + 30
         AuroraLife.Client.lastSafetyNetWarning = 0
-        player:getBodyDamage():setInfectionMortalityDuration(-1)
-        player:getBodyDamage():setInfectionTime(-1)
 
         showMessage("You suffered a lethal injury but a life was consumed! You are invulnerable for 30 seconds.")
         

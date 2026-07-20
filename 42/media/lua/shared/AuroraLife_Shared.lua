@@ -48,7 +48,7 @@ AuroraLife.MIN_LIVES          = 0
 AuroraLife.DEATH_COOLDOWN_SECS = 5
 
 -- ── Logging prefix ───────────────────────────────────────────
-AuroraLife.LOG_TAG = "[LIFEMOD]"
+AuroraLife.LOG_TAG = "[AuroraLife]"
 
 -- ── Default sandbox fallbacks (used when SandboxVars not ready)
 AuroraLife.DEFAULT_STARTING_LIVES                   = 5
