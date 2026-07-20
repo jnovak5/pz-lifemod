@@ -96,7 +96,8 @@ end
 -- Signature: playerIndex, context, worldObjects, test
 -- ============================================================
 local function onFillWorldObjectContextMenu(playerIndex, context, worldObjects, test)
-    -- Early exit: only show for admins (client-side display check)
+    -- Early exit if no world objects were clicked or player isn't loaded
+    if not worldObjects then return end
     local localPlayer = getSpecificPlayer(playerIndex)
     if not localPlayer then return end
     if not AuroraLife.isAuthorised(localPlayer) then return end
