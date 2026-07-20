@@ -19,16 +19,19 @@ local function printToChat(text, r, g, b)
     -- We must avoid ISChat.addLineInChat because it causes critical conflicts with 
     -- other chat mods (like Aurora Chat) which expect strict Java ChatMessage objects.
     if getPlayer() then
-        getPlayer():setHaloNote(text, (r or 1)*255, (g or 1)*255, (b or 1)*255, 350)
+        -- Increased duration from 350 to 500 for better visibility
+        getPlayer():setHaloNote(text, (r or 1)*255, (g or 1)*255, (b or 1)*255, 500)
     end
 end
 
 local function showMessage(text)
-    printToChat("[AuroraLife] " .. text, 0.2, 0.8, 0.2)
+    -- Bright yellow for normal messages to make them easier to see
+    printToChat(text, 1.0, 0.85, 0.0)
 end
 
 local function showEliminationMessage(text)
-    printToChat("[AuroraLife — ELIMINATED] " .. text, 1.0, 0.15, 0.15)
+    -- Bright red for elimination messages
+    printToChat(text, 1.0, 0.15, 0.15)
 end
 
 -- ============================================================
@@ -124,7 +127,7 @@ local function checkPlayerHealth(player)
             showMessage("Your safety net has expired. Be careful!")
         else
             local remaining = AuroraLife.Client.safetyNetEndTime - currentTime
-            if remaining <= 5 and currentTime > AuroraLife.Client.lastSafetyNetWarning then
+            if remaining <= 10 and currentTime > AuroraLife.Client.lastSafetyNetWarning then
                 AuroraLife.Client.lastSafetyNetWarning = currentTime
                 showMessage("Safety net expires in " .. remaining .. " seconds!")
             end
