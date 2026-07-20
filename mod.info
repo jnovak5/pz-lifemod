@@ -1,5 +1,5 @@
-name=AuroraLifeLocal
-id=AuroraLife
+name=AuroraLife (Local Dev)
+id=AuroraLifeLocal
 description=A server-authoritative finite lives system for Build 42 multiplayer. Players begin each season with a configured number of lives. Death matters - but one mistake won't permanently remove a player. Lives are tracked by SteamID64 and persist across restarts, character recreations, and username changes. Includes admin tools, sandbox options, and anti-exploit protection.
 url=
 modversion=1.0.0
