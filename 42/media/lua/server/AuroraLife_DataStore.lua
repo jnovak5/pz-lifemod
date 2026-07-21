@@ -20,7 +20,7 @@ local _loaded     = false        -- true after initial load succeeded
 local _dataPath   = nil          -- resolved on first call to _resolvePath()
 local _backupDir  = nil
 
-local MAX_BACKUPS = 10
+local MAX_BACKUPS = 5
 
 -- ============================================================
 -- Path helpers
@@ -329,9 +329,9 @@ end
 -- ============================================================
 function DS.periodicTick()
     DS.flushIfDirty()
-    -- Rotate backups every ~30 minutes (every 3rd tick of EveryTenMinutes)
+    -- Rotate backups every 12 in-game hours (every 72nd tick of EveryTenMinutes)
     DS._tickCount = (DS._tickCount or 0) + 1
-    if DS._tickCount % 3 == 0 then
+    if DS._tickCount % 72 == 0 then
         DS.createBackup()
         DS.pruneBackups(MAX_BACKUPS)
     end

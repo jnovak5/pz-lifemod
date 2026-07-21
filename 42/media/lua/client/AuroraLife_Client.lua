@@ -393,23 +393,10 @@ local function initializeUIHooks()
                 local x = 20 + math.max(textWid1, math.max(textWid2, textWid3))
 
                 -- Calculate the exact Z coordinate where vanilla finished drawing
+                -- The literatureButton ("Discovered Recipes and Media") is at the bottom of the stat list
                 local z = self.literatureButton:getBottom()
                 local BUTTON_HGT = math.max(25, getTextManager():getFontHeight(UIFont.Small) + 3 * 2)
-                z = math.max(z + 10, self.avatarY + self.avatarHeight + 10 + 2)
-                
-                -- Account for Favourite Weapon
-                if self.favouriteWeapon then
-                    z = z + BUTTON_HGT
-                end
-                
-                -- Account for Zombies Killed
-                z = z + BUTTON_HGT
-                
-                -- Account for Survived For (if they have a watch)
-                local clock = UIManager.getClock()
-                if clock and clock:isDateVisible() then
-                    z = z + BUTTON_HGT
-                end
+                z = math.max(z + 15, self.avatarY + self.avatarHeight + 10 + 2)
                 
                 -- Draw the AuroraLife counter precisely underneath the last drawn vanilla stat
                 self:drawTextRight("Lives Remaining", x, z, 1, 1, 1, 1, UIFont.Small)
