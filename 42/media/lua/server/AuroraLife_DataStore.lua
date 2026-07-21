@@ -50,7 +50,14 @@ local function _encodeValue(v)
     local t = type(v)
     if t == "nil"     then return "null"
     elseif t == "boolean" then return v and "true" or "false"
-    elseif t == "number"  then return tostring(v)
+    elseif t == "number"  then
+        -- Prevent scientific notation for large numbers like timestamps
+        local str = string.format("%.6f", v)
+        if str:find("%.") then
+            str = str:gsub("0+$", "")
+            str = str:gsub("%.$", "")
+        end
+        return str
     elseif t == "string"  then
         -- escape backslashes, double-quotes, newlines
         v = v:gsub('\\', '\\\\'):gsub('"', '\\"'):gsub('\n', '\\n'):gsub('\r', '\\r')
