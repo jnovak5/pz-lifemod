@@ -394,9 +394,8 @@ local function initializeUIHooks()
 
                 -- Calculate the exact Z coordinate where vanilla finished drawing
                 -- The literatureButton ("Discovered Recipes and Media") is at the bottom of the stat list
-                local z = self.literatureButton:getBottom()
+                local z = self.literatureButton:getBottom() + 15
                 local BUTTON_HGT = math.max(25, getTextManager():getFontHeight(UIFont.Small) + 3 * 2)
-                z = math.max(z + 15, self.avatarY + self.avatarHeight + 10 + 2)
                 
                 -- Draw the AuroraLife counter precisely underneath the last drawn vanilla stat
                 self:drawTextRight("Lives Remaining", x, z, 1, 1, 1, 1, UIFont.Small)
@@ -411,8 +410,9 @@ local function initializeUIHooks()
                 
                 self:drawText(tostring(lives) .. " / " .. tostring(maxLives), x + 10, z, r, g, b, 1.0, UIFont.Small)
                 
-                -- Push the window height down so it doesn't clip our new text
-                self:setHeightAndParentHeight(z + BUTTON_HGT + 10)
+                -- Push the window height down so it doesn't clip our new text or the avatar
+                local finalHeight = math.max(z + BUTTON_HGT + 10, self.avatarY + self.avatarHeight + 10 + 2)
+                self:setHeightAndParentHeight(finalHeight)
             end
         end
     end
