@@ -11,7 +11,7 @@ require "AuroraLife_Logger"
 
 AuroraLife.Admin = AuroraLife.Admin or {}
 
-local Adm = AuroraLife.Admin
+local Admin = AuroraLife.Admin
 local DS  = AuroraLife.DataStore
 local LOG = AuroraLife.Logger
 
@@ -21,14 +21,14 @@ local LOG = AuroraLife.Logger
 -- Attempts removal via the PZ server API; logs result either way.
 -- username = last-known username string (display name, not SteamID)
 -- ============================================================
-local function attemptWhitelistRemoval(username, steamID)
+local function attemptWhitelistRemoval(username)
     local enabled = AuroraLife.getSandboxCfg(
         "RemoveFromWhitelistOnElimination",
         AuroraLife.DEFAULT_REMOVE_WHITELIST_ON_ELIMINATION
     )
     if not enabled then return end
 
-    LOG.logSystem("Whitelist: attempting removal of " .. username .. " (SteamID=" .. steamID .. ")")
+    LOG.logSystem("Whitelist: attempting removal of " .. username)
 
     -- Approach 1: PZ native Lua bridge (most reliable if exposed)
     local ok1 = pcall(function()
@@ -115,7 +115,7 @@ end
 -- ============================================================
 local function applyEliminationEffects(record, player)
     -- Whitelist removal (online or offline — uses username from record)
-    attemptWhitelistRemoval(record.username, record.steamID)
+    attemptWhitelistRemoval(record.username)
 
     local msgEnabled = AuroraLife.getSandboxCfg(
         "EnablePrivateDeathMessage",
@@ -127,7 +127,7 @@ local function applyEliminationEffects(record, player)
     if players then
         for i = 0, players:size() - 1 do
             local p = players:get(i)
-            if p and tostring(p:getSteamID()) == record.steamID then
+            if p and p:getUsername():lower() == record.username:lower() then
                 if msgEnabled then
                     local msg = "An Admin has eliminated you. Your current run is over."
                     sendServerCommand(p, AuroraLife.MODULE, AuroraLife.CMD_ELIMINATED, { message = msg })
@@ -142,12 +142,12 @@ end
 -- Internal: find an online IsoPlayer by SteamID
 -- Returns IsoPlayer or nil
 -- ============================================================
-local function findOnlinePlayer(steamID)
+local function findOnlinePlayer(username)
     local players = getOnlinePlayers()
     if not players then return nil end
     for i = 0, players:size() - 1 do
         local p = players:get(i)
-        if p and tostring(p:getSteamID()) == steamID then
+        if p and p:getUsername():lower() == username:lower() then
             return p
         end
     end
@@ -171,23 +171,22 @@ function Admin.onPlayerConnect(player)
         return
     end
 
-    local steamID  = tostring(player:getSteamID())
     local username = tostring(player:getUsername())
     local now      = os.time()
 
-    if not steamID or steamID == "" or steamID == "0" then
-        LOG.logWarn("Admin: player connected with invalid SteamID. User=" .. username)
+    if not username or username == "" then
+        LOG.logWarn("Admin: player connected with invalid username.")
         return
     end
 
-    local record = DS.getRecord(steamID)
+    local record = DS.getRecord(username)
 
     -- New player: enrol them
     if not record then
-        record = DS.newRecord(steamID, username)
-        DS.setRecord(steamID, record)
+        record = DS.newRecord(username)
+        DS.setRecord(username, record)
         DS.saveDeferred()
-        LOG.logSystem("Admin: new player enrolled — SteamID=" .. steamID .. " | User=" .. username)
+        LOG.logSystem("Admin: new player enrolled — User=" .. username)
         
         sendServerCommand(player, AuroraLife.MODULE, AuroraLife.CMD_LIFE_UPDATE, {
             lives    = record.lives,
@@ -202,7 +201,7 @@ function Admin.onPlayerConnect(player)
 
     -- Elimination gate
     if record.eliminated then
-        LOG.logWarn("Admin: eliminated player reconnected — SteamID=" .. steamID .. " | User=" .. username)
+        LOG.logWarn("Admin: eliminated player reconnected — User=" .. username)
 
         local msgEnabled = AuroraLife.getSandboxCfg("EnablePrivateDeathMessage", AuroraLife.DEFAULT_PRIVATE_DEATH_MESSAGE)
         if msgEnabled then
@@ -212,7 +211,7 @@ function Admin.onPlayerConnect(player)
         -- Removed: Connection rejection / Kicking. They can now simply make a new character.
     end
 
-    DS.setRecord(steamID, record)
+    DS.setRecord(username, record)
     DS.saveDeferred()
     
     sendServerCommand(player, AuroraLife.MODULE, AuroraLife.CMD_LIFE_UPDATE, {
@@ -227,11 +226,11 @@ end
 function Admin.onPlayerDisconnect(player)
     if not DS.isLoaded() then return end
 
-    local steamID = tostring(player:getSteamID())
-    local record  = DS.getRecord(steamID)
+    local username = tostring(player:getUsername())
+    local record  = DS.getRecord(username)
     if record then
         record.lastSeen = os.time()
-        DS.setRecord(steamID, record)
+        DS.setRecord(username, record)
         DS.flushIfDirty()
     end
 end
@@ -240,12 +239,12 @@ end
 -- Execute an admin operation (called from Commands and UI router)
 -- adminPlayer   = IsoPlayer performing the action
 -- action        = AuroraLife.ACTION_* constant
--- targetSteamID = string steam ID of the target
+-- targetUsername = string username of the target
 -- amount        = number (optional, for add/remove/set)
 -- reason        = string (optional, for logging)
 -- Returns: success (bool), message (string)
 -- ============================================================
-function Admin.executeOperation(adminPlayer, action, targetSteamID, amount, reason)
+function Admin.executeOperation(adminPlayer, action, targetUsername, amount, reason)
     -- Double-check server-side admin authorisation
     if not AuroraLife.isAuthorised(adminPlayer) then
         return false, "Access denied: insufficient permissions."
@@ -256,40 +255,27 @@ function Admin.executeOperation(adminPlayer, action, targetSteamID, amount, reas
     end
 
     local adminName = tostring(adminPlayer:getUsername())
-    local record    = DS.getRecord(targetSteamID)
+    local record    = DS.getRecord(targetUsername)
 
     if not record and action ~= AuroraLife.ACTION_VIEW then
-        return false, "No record found for player: " .. tostring(targetSteamID)
+        return false, "No record found for player: " .. tostring(targetUsername)
     end
 
     -- ── VIEW ─────────────────────────────────────────────────
     if action == AuroraLife.ACTION_VIEW then
         if not record then
-            return true, string.format("[AuroraLife] No record found for SteamID=%s", targetSteamID)
+            return true, string.format("No record found for Username=%s", targetUsername)
         end
         return true, string.format(
-            "[AuroraLife] %s (SteamID=%s) | Lives: %d/%d | Eliminated: %s | Deaths: %d",
-            record.username, record.steamID,
+            "%s | Lives: %d/%d | Deaths: %d",
+            record.username,
             record.lives, record.maxLives,
-            tostring(record.eliminated), record.deathCount
+            record.deathCount
         )
     end
 
     -- ── RESTORE ──────────────────────────────────────────────
-    if action == AuroraLife.ACTION_RESTORE then
-        local prev        = record.lives
-        local restoreAmt  = AuroraLife.getRestoreLives()
-        record.lives      = restoreAmt
-        record.eliminated = false
-        DS.setRecord(targetSteamID, record)
-        DS.saveImmediate()
-        LOG.logAdmin(adminName, "RESTORE", targetSteamID, prev, record.lives, reason)
-        return true, string.format(
-            "[AuroraLife] %s restored. Lives set to %d. Elimination cleared.",
-            record.username, record.lives
-        )
-    end
-
+    -- Feature completely removed per user request.
     -- Numeric operations require amount
     local num = tonumber(amount)
     if not num then
@@ -329,43 +315,54 @@ function Admin.executeOperation(adminPlayer, action, targetSteamID, amount, reas
         return false, "Unknown action: " .. tostring(action)
     end
 
-    DS.setRecord(targetSteamID, record)
+    DS.setRecord(targetUsername, record)
     DS.saveImmediate()
-    LOG.logAdmin(adminName, string.upper(action), targetSteamID, prev, record.lives, reason)
+    LOG.logAdmin(adminName, string.upper(action), targetUsername, prev, record.lives, reason)
+
+    -- Send update to client if they are online
+    local onlinePlayer = findOnlinePlayer(targetUsername)
+    if onlinePlayer then
+        sendServerCommand(onlinePlayer, AuroraLife.MODULE, AuroraLife.CMD_LIFE_UPDATE, {
+            lives      = record.lives,
+            maxLives   = record.maxLives,
+            eliminated = record.eliminated,
+            deathCount = record.deathCount
+        })
+    end
 
     -- Apply elimination side-effects if this action newly eliminated the player
     if record.eliminated and not wasElim then
-        local onlinePlayer = findOnlinePlayer(targetSteamID)
         applyEliminationEffects(record, onlinePlayer)
     end
 
     return true, string.format(
-        "[AuroraLife] %s | %s | Lives: %d → %d | Eliminated: %s",
-        record.username, string.upper(action), prev, record.lives, tostring(record.eliminated)
+        "%s | %s | Lives: %d to %d",
+        record.username, string.upper(action), prev, record.lives
     )
 end
 
+
 -- ============================================================
--- Resolve a target SteamID from a player name string.
+-- Resolve a target Username from a player name string.
 -- Searches online players first, then DataStore records.
--- Returns steamID (string) or nil.
+-- Returns exact stored username (string) or nil.
 -- ============================================================
-function Admin.resolveTargetSteamID(targetName)
+function Admin.resolveTargetUsername(targetName)
     -- Search online players
     local players = getOnlinePlayers()
     if players then
         for i = 0, players:size() - 1 do
             local p = players:get(i)
             if p and p:getUsername():lower() == targetName:lower() then
-                return tostring(p:getSteamID())
+                return tostring(p:getUsername())
             end
         end
     end
 
-    -- Search DataStore records by last-known username
-    for sid, rec in pairs(DS.getAllRecords()) do
-        if rec.username and rec.username:lower() == targetName:lower() then
-            return sid
+    -- Search DataStore records
+    for uname, rec in pairs(DS.getAllRecords()) do
+        if uname:lower() == targetName:lower() then
+            return uname
         end
     end
 

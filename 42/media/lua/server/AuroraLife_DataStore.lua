@@ -14,7 +14,7 @@ local DS = AuroraLife.DataStore
 local LOG = AuroraLife.Logger
 
 -- ── Internal state ────────────────────────────────────────────
-local _records    = {}           -- [steamID] = record table
+local _records    = {}           -- [username] = record table
 local _dirty      = false        -- true when unsaved changes exist
 local _loaded     = false        -- true after initial load succeeded
 local _dataPath   = nil          -- resolved on first call to _resolvePath()
@@ -77,7 +77,7 @@ end
 
 local function _encode(records)
     local parts = {}
-    for steamID, record in pairs(records) do
+    for username, record in pairs(records) do
         parts[#parts+1] = _encodeValue(record)
     end
     -- Save as a Lua array so loadstring can evaluate it without brackets
@@ -119,7 +119,8 @@ end
 
 local function _readFile(path)
     -- getModFileReader(modID, fileName, createIfNull)
-    local reader = getModFileReader("AuroraLife", path, false)
+    -- Use standard getFileReader which writes/reads from Zomboid/Lua/ or Server Saves dir
+    local reader = getFileReader(path, false)
     if not reader then return nil, "file not found" end
     
     local content = ""
@@ -134,7 +135,8 @@ end
 
 local function _writeFile(path, content)
     -- getModFileWriter(modID, fileName, createIfNull, append)
-    local writer = getModFileWriter("AuroraLife", path, true, false)
+    -- Use standard getFileWriter which reliably writes to Zomboid/Lua or Server Saves
+    local writer = getFileWriter(path, true, false)
     if not writer then return false, "cannot open file" end
     
     writer:write(content)
@@ -201,8 +203,8 @@ function DS.load()
         -- Build lookup table
         _records = {}
         for _, record in ipairs(parsed) do
-            if record and record.steamID then
-                _records[record.steamID] = record
+            if record and record.username then
+                _records[record.username] = record
             end
         end
         local count = 0
@@ -226,8 +228,8 @@ function DS._restoreFromBackup()
             if parsed then
                 _records = {}
                 for _, record in ipairs(parsed) do
-                    if record and record.steamID then
-                        _records[record.steamID] = record
+                    if record and record.username then
+                        _records[record.username] = record
                     end
                 end
                 LOG.logSystem("DataStore: restored from backup → " .. backupPath)
@@ -244,12 +246,12 @@ end
 -- Record accessors
 -- ============================================================
 
-function DS.getRecord(steamID)
-    return _records[steamID]
+function DS.getRecord(username)
+    return _records[username]
 end
 
-function DS.setRecord(steamID, record)
-    _records[steamID] = record
+function DS.setRecord(username, record)
+    _records[username] = record
     _dirty = true
 end
 
@@ -259,6 +261,16 @@ end
 
 function DS.isLoaded()
     return _loaded
+end
+
+-- ============================================================
+-- Lazy-load fallback: ensures data is loaded before first use.
+-- OnServerStarted may not fire in all PZ Build 42 co-op modes.
+-- ============================================================
+function DS.ensureLoaded()
+    if _loaded then return end
+    print("[AuroraLife] DataStore: lazy-loading (OnServerStarted did not fire).")
+    DS.load()
 end
 
 -- ============================================================
@@ -280,6 +292,8 @@ end
 
 function DS.saveDeferred()
     _dirty = true
+    -- Actually save promptly instead of waiting for the 10-minute periodic tick
+    DS.saveImmediate()
 end
 
 function DS.flushIfDirty()
@@ -292,10 +306,9 @@ end
 -- Player record factory
 -- ============================================================
 
-function DS.newRecord(steamID, username)
+function DS.newRecord(username)
     local startLives = AuroraLife.getSandboxCfg("StartingLives", AuroraLife.DEFAULT_STARTING_LIVES)
     return {
-        steamID    = steamID,
         username   = username or "unknown",
         lives      = startLives,
         maxLives   = startLives,

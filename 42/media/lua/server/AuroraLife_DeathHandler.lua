@@ -15,15 +15,15 @@ local DS  = AuroraLife.DataStore
 local LOG = AuroraLife.Logger
 
 -- ── Duplicate-death cooldown table ───────────────────────────
--- [steamID] = epoch-second of last confirmed death
+-- [username] = epoch-second of last confirmed death
 local _cooldown = {}
 
 -- ── Internal: purge expired cooldown entries ──────────────────
 local function _purgeCooldowns()
     local now = os.time()
-    for sid, ts in pairs(_cooldown) do
+    for uname, ts in pairs(_cooldown) do
         if (now - ts) >= AuroraLife.DEATH_COOLDOWN_SECS then
-            _cooldown[sid] = nil
+            _cooldown[uname] = nil
         end
     end
 end
@@ -80,8 +80,7 @@ local function _applyElimination(player, record)
     end
 
 
-    LOG.logWarn("DeathHandler: player eliminated — SteamID=" .. tostring(record.steamID) ..
-                " | User=" .. tostring(record.username))
+    LOG.logWarn("DeathHandler: player eliminated — User=" .. tostring(record.username))
 end
 
 -- ============================================================
@@ -106,29 +105,28 @@ function DH.handleDeath(character)
         return
     end
 
-    local steamID  = tostring(character:getSteamID())
     local username = tostring(character:getUsername())
 
-    if not steamID or steamID == "" or steamID == "0" then
-        LOG.logWarn("DeathHandler: death event with invalid SteamID. Ignored. User=" .. username)
+    if not username or username == "" then
+        LOG.logWarn("DeathHandler: death event with invalid username. Ignored.")
         return
     end
 
     -- Guard: duplicate-event cooldown
     _purgeCooldowns()
     local now = os.time()
-    if _cooldown[steamID] then
-        LOG.logWarn("DeathHandler: duplicate death suppressed for SteamID=" .. steamID ..
+    if _cooldown[username] then
+        LOG.logWarn("DeathHandler: duplicate death suppressed for User=" .. username ..
                     " (within " .. AuroraLife.DEATH_COOLDOWN_SECS .. "s cooldown).")
         return
     end
-    _cooldown[steamID] = now
+    _cooldown[username] = now
 
     -- Load or create record
-    local record = DS.getRecord(steamID)
+    local record = DS.getRecord(username)
     if not record then
-        record = DS.newRecord(steamID, username)
-        LOG.logSystem("DeathHandler: new player enrolled — SteamID=" .. steamID .. " | User=" .. username)
+        record = DS.newRecord(username)
+        LOG.logSystem("DeathHandler: new player enrolled — User=" .. username)
     end
 
     -- Sync display username (may have changed; SteamID is the authority)
@@ -137,8 +135,8 @@ function DH.handleDeath(character)
 
     -- Guard: already eliminated (do not double-deduct)
     if record.eliminated then
-        LOG.logWarn("DeathHandler: death on eliminated player — no deduction. SteamID=" .. steamID)
-        DS.setRecord(steamID, record)
+        LOG.logWarn("DeathHandler: death on eliminated player — no deduction. User=" .. username)
+        DS.setRecord(username, record)
         DS.saveImmediate()
         return
     end
@@ -192,7 +190,7 @@ function DH.handleDeath(character)
     end
 
     -- Persist immediately (death is a destructive event)
-    DS.setRecord(steamID, record)
+    DS.setRecord(username, record)
     DS.saveImmediate()
 
     -- Log
@@ -228,8 +226,15 @@ end
 -- ============================================================
 -- Public: manually set the cooldown (used by CMD_CONSUME_LIFE)
 -- ============================================================
-function DH.setCooldown(steamID)
-    if steamID then
-        _cooldown[tostring(steamID)] = os.time()
+function DH.setCooldown(username)
+    if username then
+        _cooldown[tostring(username)] = os.time()
     end
+end
+
+-- ============================================================
+-- Public: purge expired cooldowns (called periodically)
+-- ============================================================
+function DH.purgeCooldowns()
+    _purgeCooldowns()
 end

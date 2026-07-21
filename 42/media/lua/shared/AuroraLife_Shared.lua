@@ -20,29 +20,25 @@ AuroraLife.CMD_ELIMINATED   = "notify_eliminated"
 -- ── Network commands (client → server) ───────────────────────
 AuroraLife.CMD_PLAYER_CONNECT = "player_connect"
 AuroraLife.CMD_REQUEST_LIVES  = "request_lives"
-AuroraLife.CMD_LIFE_UPDATE    = "life_update"
 AuroraLife.CMD_CONSUME_LIFE   = "consume_life"
-AuroraLife.CMD_ELIMINATED     = "eliminated"
 AuroraLife.CMD_NEW_CHARACTER  = "new_character"
 AuroraLife.CMD_SET_GODMODE    = "set_godmode"
 AuroraLife.CMD_HEAL_PLAYER    = "heal_player"
 AuroraLife.CMD_LOG_EVENT      = "log_event"
 AuroraLife.CMD_ADMIN_VIEW    = "admin_view"
 AuroraLife.CMD_ADMIN_SET     = "admin_set"
-AuroraLife.CMD_ADMIN_RESTORE = "admin_restore"
 
 -- ── Admin set actions ────────────────────────────────────────
 AuroraLife.ACTION_VIEW   = "view"
 AuroraLife.ACTION_ADD    = "add"
 AuroraLife.ACTION_REMOVE = "remove"
 AuroraLife.ACTION_SET    = "set"
-AuroraLife.ACTION_RESTORE= "restore"
 
 -- ── Access levels allowed to use admin commands ───────────────
 -- Build 42 access level strings.  Moderator included by default.
 AuroraLife.ADMIN_ACCESS_LEVELS = {
-    ["Admin"]     = true,
-    ["Moderator"] = true,
+    ["admin"]     = true,
+    ["moderator"] = true,
 }
 
 -- ── Hard limits ───────────────────────────────────────────────
@@ -61,7 +57,6 @@ AuroraLife.DEFAULT_STARTING_LIVES                   = 5
 AuroraLife.DEFAULT_ENABLE_SYSTEM                    = true
 AuroraLife.DEFAULT_KICK_ON_ELIMINATION              = true
 AuroraLife.DEFAULT_PRIVATE_DEATH_MESSAGE            = true
-AuroraLife.DEFAULT_RESTORE_LIVES                    = 1    -- lives given by /lifes restore
 AuroraLife.DEFAULT_REMOVE_WHITELIST_ON_ELIMINATION  = false
 
 -- ============================================================
@@ -82,8 +77,12 @@ end
 -- ============================================================
 function AuroraLife.isAuthorised(player)
     if not player then return false end
+    -- Allow full access in singleplayer for testing
+    if not isClient() and not isServer() then return true end
+    
     local level = player:getAccessLevel()
-    return AuroraLife.ADMIN_ACCESS_LEVELS[level] == true
+    if not level then return false end
+    return AuroraLife.ADMIN_ACCESS_LEVELS[tostring(level):lower()] == true
 end
 
 -- ============================================================
@@ -117,15 +116,4 @@ function AuroraLife.timestamp()
     end)
     if ok then return result end
     return tostring(os.time())
-end
-
--- ============================================================
--- Utility: get the configurable restore lives amount
--- ============================================================
-function AuroraLife.getRestoreLives()
-    return AuroraLife.clamp(
-        AuroraLife.getSandboxCfg("RestoreLives", AuroraLife.DEFAULT_RESTORE_LIVES),
-        1,
-        AuroraLife.MAX_LIVES_HARD_CAP
-    )
 end

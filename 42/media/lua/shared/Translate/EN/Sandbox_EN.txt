@@ -10,6 +10,4 @@ Sandbox_EN = {
     Sandbox_AuroraLife_EnablePrivateDeathMessage_tooltip = "Send a private notification to the player when they die, showing their remaining lives.",
     Sandbox_AuroraLife_RemoveFromWhitelistOnElimination = "Remove Eliminated Players from Whitelist",
     Sandbox_AuroraLife_RemoveFromWhitelistOnElimination_tooltip = "Automatically remove an eliminated player from the server whitelist, preventing them from reconnecting even if they know the password. Requires whitelist to be enabled on the server.",
-    Sandbox_AuroraLife_RestoreLives = "Lives Granted on Restore",
-    Sandbox_AuroraLife_RestoreLives_tooltip = "The number of lives an eliminated player receives when an admin uses '/lifes restore' or the context menu Restore option.",
 }

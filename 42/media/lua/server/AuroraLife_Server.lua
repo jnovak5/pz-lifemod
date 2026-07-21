@@ -57,6 +57,7 @@ end
 -- ============================================================
 local function onEveryTenMinutes()
     DS.periodicTick()
+    DH.purgeCooldowns()
 end
 
 -- ============================================================
@@ -66,6 +67,9 @@ end
 local function onClientCommand(module, command, player, args)
     if module ~= AuroraLife.MODULE then return end
 
+    -- Ensure DataStore is loaded (fallback for when OnServerStarted doesn't fire)
+    DS.ensureLoaded()
+
     if command == AuroraLife.CMD_PLAYER_CONNECT then
         Adm.onPlayerConnect(player)
         return
@@ -73,13 +77,12 @@ local function onClientCommand(module, command, player, args)
 
     if command == AuroraLife.CMD_REQUEST_LIVES then
         LOG.logSystem("Server: Received CMD_REQUEST_LIVES from " .. tostring(player:getUsername()))
-        local steamID = player:getSteamID()
-        local record = DS.getRecord(steamID)
+        local username = tostring(player:getUsername())
+        local record = DS.getRecord(username)
         if not record then
             LOG.logSystem("Server: Creating new record for " .. tostring(player:getUsername()))
             local defaultLives = AuroraLife.getSandboxCfg("StartingLives", AuroraLife.DEFAULT_STARTING_LIVES)
             record = {
-                steamID = steamID,
                 username = player:getUsername(),
                 lives = defaultLives,
                 maxLives = defaultLives,
@@ -87,7 +90,7 @@ local function onClientCommand(module, command, player, args)
                 lastDeath = 0,
                 deathCount = 0
             }
-            DS.setRecord(steamID, record)
+            DS.setRecord(username, record)
             DS.saveDeferred()
         end
         
@@ -110,15 +113,15 @@ local function onClientCommand(module, command, player, args)
     end
 
     if command == AuroraLife.CMD_CONSUME_LIFE then
-        local steamID = player:getSteamID()
-        local record = DS.getRecord(steamID)
+        local username = tostring(player:getUsername())
+        local record = DS.getRecord(username)
         if record and record.lives > 0 then
             record.lives = record.lives - 1
             record.deathCount = (record.deathCount or 0) + 1
             DS.saveDeferred()
             
             -- Prevent double-deduction if the engine also fires OnPlayerDeath
-            DH.setCooldown(steamID)
+            DH.setCooldown(username)
             
             sendServerCommand(player, AuroraLife.MODULE, AuroraLife.CMD_LIFE_UPDATE, {
                 lives = record.lives,
@@ -136,8 +139,8 @@ local function onClientCommand(module, command, player, args)
 
     if command == AuroraLife.CMD_NEW_CHARACTER then
         LOG.logSystem("Server: CMD_NEW_CHARACTER received for " .. tostring(player:getUsername()))
-        local steamID = player:getSteamID()
-        local record = DS.getRecord(steamID)
+        local username = tostring(player:getUsername())
+        local record = DS.getRecord(username)
         if record then
                 local defaultLives = AuroraLife.getSandboxCfg("StartingLives", AuroraLife.DEFAULT_STARTING_LIVES)
                 record.lives = defaultLives
@@ -191,13 +194,13 @@ local function onClientCommand(module, command, player, args)
 
     -- ── Admin view ───────────────────────────────────────────
     if command == AuroraLife.CMD_ADMIN_VIEW then
-        local targetSteamID = tostring(args and args.targetSteamID or "")
-        local ok, msg = Adm.executeOperation(player, AuroraLife.ACTION_VIEW, targetSteamID)
+        local targetUsername = tostring(args and args.targetName or "")
+        local ok, msg = Adm.executeOperation(player, AuroraLife.ACTION_VIEW, targetUsername)
         sendServerCommand(player, AuroraLife.MODULE, "admin_reply", { message = msg })
 
     -- ── Admin set (add / remove / set) ───────────────────────
     elseif command == AuroraLife.CMD_ADMIN_SET then
-        local targetSteamID = tostring(args and args.targetSteamID or "")
+        local targetUsername = tostring(args and args.targetName or "")
         local action        = tostring(args and args.action or "")
         local amount        = args and args.amount
 
@@ -212,13 +215,7 @@ local function onClientCommand(module, command, player, args)
             return
         end
 
-        local ok, msg = Adm.executeOperation(player, action, targetSteamID, amount)
-        sendServerCommand(player, AuroraLife.MODULE, "admin_reply", { message = msg })
-
-    -- ── Admin restore ─────────────────────────────────────────
-    elseif command == AuroraLife.CMD_ADMIN_RESTORE then
-        local targetSteamID = tostring(args and args.targetSteamID or "")
-        local ok, msg = Adm.executeOperation(player, AuroraLife.ACTION_RESTORE, targetSteamID)
+        local ok, msg = Adm.executeOperation(player, action, targetUsername, amount)
         sendServerCommand(player, AuroraLife.MODULE, "admin_reply", { message = msg })
 
     else
@@ -266,5 +263,9 @@ Events.EveryTenMinutes.Add(onEveryTenMinutes)
 Events.OnClientCommand.Add(onClientCommand)
 Events.OnServerCommand.Add(onServerCommand)
 
+-- Fallback: OnGameStart fires in co-op when OnServerStarted may not
+if Events.OnGameStart then
+    Events.OnGameStart.Add(onServerStarted)
+end
 
 LOG.logSystem("AuroraLife_Server.lua loaded — events registered.")

@@ -211,10 +211,6 @@ local function checkPlayerHealth(player)
         AuroraLife.Client.joinTime = AuroraLife.Client.joinTime or curTimeMs
         if curTimeMs - AuroraLife.Client.joinTime > 3000 then
             AuroraLife.Client.hasInitialized = true
-            if not player:getModData().AuroraLife_NewCharClaimed then
-                player:getModData().AuroraLife_NewCharClaimed = true
-                sendClientCommand(player, AuroraLife.MODULE, AuroraLife.CMD_NEW_CHARACTER, {})
-            end
             sendClientCommand(player, AuroraLife.MODULE, AuroraLife.CMD_REQUEST_LIVES, {})
         end
         return

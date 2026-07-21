@@ -12,7 +12,7 @@
 
 AuroraLife gives your multiplayer server a **seasonal life system** — players start each season with a finite pool of lives. Death matters, but a single mistake won't permanently remove someone from the server. Once all lives are exhausted the player is **eliminated**, optionally kicked and/or removed from the whitelist.
 
-Lives are tracked by **SteamID64** and persist across restarts, character recreations, and username changes. The system is fully **server-authoritative**, so clients cannot manipulate their own life count.
+Lives are tracked by **username** and persist across restarts, character recreations, and username changes. The system is fully **server-authoritative**, so clients cannot manipulate their own life count.
 
 ---
 
@@ -22,7 +22,7 @@ Lives are tracked by **SteamID64** and persist across restarts, character recrea
 |---|---|
 | 🎯 Finite lives per season | Configurable starting count (1–99) |
 | 🔒 Server-authoritative | All life changes happen server-side |
-| 🪪 SteamID64 tracking | Survives renames, character resets, and restarts |
+| 🪪 Username tracking | Survives character resets and restarts |
 | 💀 Elimination system | Kick and/or whitelist removal on last life |
 | 🔧 Sandbox options | Full in-game configuration panel |
 | 🛡️ Admin commands | View, add, remove, set, and restore lives |
@@ -98,7 +98,7 @@ AuroraLife/
         │   │   └── AuroraLife_UI.lua      # UI panel / life display
         │   ├── server/
         │   │   ├── AuroraLife_Server.lua  # Core server logic & event hooks
-        │   │   ├── AuroraLife_DataStore.lua # SteamID64-keyed persistent storage
+        │   │   ├── AuroraLife_DataStore.lua # Username-keyed persistent storage
         │   │   ├── AuroraLife_DeathHandler.lua # OnPlayerDeath with cooldown guard
         │   │   ├── AuroraLife_Commands.lua # Admin slash-command parsing
         │   │   ├── AuroraLife_Admin.lua   # Admin action handlers

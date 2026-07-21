@@ -32,7 +32,6 @@ local USAGE = table.concat({
     "  /lifes add <PlayerName> <amount>",
     "  /lifes remove <PlayerName> <amount>",
     "  /lifes set <PlayerName> <amount>",
-    "  /lifes restore <PlayerName>",
     "  /lifes debug",
 }, "\n")
 
@@ -45,13 +44,13 @@ local function cmdCheck(player, args)
         return
     end
 
-    local steamID = Admin.resolveTargetSteamID(targetName)
-    if not steamID then
+    local username = Admin.resolveTargetUsername(targetName)
+    if not username then
         reply(player, "[AuroraLife] Player not found: " .. targetName)
         return
     end
 
-    local ok, msg = Admin.executeOperation(player, AuroraLife.ACTION_VIEW, steamID)
+    local ok, msg = Admin.executeOperation(player, AuroraLife.ACTION_VIEW, username)
     reply(player, msg)
 end
 
@@ -67,13 +66,13 @@ local function cmdAdd(player, args)
         return
     end
 
-    local steamID = Admin.resolveTargetSteamID(targetName)
-    if not steamID then
+    local username = Admin.resolveTargetUsername(targetName)
+    if not username then
         reply(player, "[AuroraLife] Player not found: " .. targetName)
         return
     end
 
-    local ok, msg = Admin.executeOperation(player, AuroraLife.ACTION_ADD, steamID, amount)
+    local ok, msg = Admin.executeOperation(player, AuroraLife.ACTION_ADD, username, amount)
     reply(player, msg)
 end
 
@@ -89,13 +88,13 @@ local function cmdRemove(player, args)
         return
     end
 
-    local steamID = Admin.resolveTargetSteamID(targetName)
-    if not steamID then
+    local username = Admin.resolveTargetUsername(targetName)
+    if not username then
         reply(player, "[AuroraLife] Player not found: " .. targetName)
         return
     end
 
-    local ok, msg = Admin.executeOperation(player, AuroraLife.ACTION_REMOVE, steamID, amount)
+    local ok, msg = Admin.executeOperation(player, AuroraLife.ACTION_REMOVE, username, amount)
     reply(player, msg)
 end
 
@@ -107,30 +106,13 @@ local function cmdSet(player, args)
         return
     end
 
-    local steamID = Admin.resolveTargetSteamID(targetName)
-    if not steamID then
+    local username = Admin.resolveTargetUsername(targetName)
+    if not username then
         reply(player, "[AuroraLife] Player not found: " .. targetName)
         return
     end
 
-    local ok, msg = Admin.executeOperation(player, AuroraLife.ACTION_SET, steamID, amount)
-    reply(player, msg)
-end
-
-local function cmdRestore(player, args)
-    local targetName = args[1]
-    if not targetName then
-        reply(player, "[AuroraLife] Usage: /lifes restore <PlayerName>")
-        return
-    end
-
-    local steamID = Admin.resolveTargetSteamID(targetName)
-    if not steamID then
-        reply(player, "[AuroraLife] Player not found: " .. targetName)
-        return
-    end
-
-    local ok, msg = Admin.executeOperation(player, AuroraLife.ACTION_RESTORE, steamID)
+    local ok, msg = Admin.executeOperation(player, AuroraLife.ACTION_SET, username, amount)
     reply(player, msg)
 end
 
@@ -139,13 +121,12 @@ local function cmdDebug(player, _args)
     local count   = 0
     local parts   = { "[AuroraLife] DEBUG REPORT" }
 
-    for sid, rec in pairs(records) do
+    for uname, rec in pairs(records) do
         count = count + 1
         parts[#parts+1] = string.format(
-            "  [%d] %s (SteamID=%s) | Lives=%d/%d | Elim=%s | Deaths=%d | Last=%s",
+            "  [%d] %s | Lives=%d/%d | Elim=%s | Deaths=%d | Last=%s",
             count,
             tostring(rec.username),
-            tostring(sid),
             rec.lives, rec.maxLives,
             tostring(rec.eliminated),
             rec.deathCount,
@@ -164,9 +145,9 @@ local function cmdDebug(player, _args)
     -- Active death cooldowns
     local cooldowns = AuroraLife.DeathHandler and AuroraLife.DeathHandler.getCooldownTable() or {}
     local cdCount   = 0
-    for sid, ts in pairs(cooldowns) do
+    for uname, ts in pairs(cooldowns) do
         cdCount = cdCount + 1
-        parts[#parts+1] = string.format("  [COOLDOWN] SteamID=%s since=%d", sid, ts)
+        parts[#parts+1] = string.format("  [COOLDOWN] User=%s since=%d", uname, ts)
     end
     if cdCount == 0 then
         parts[#parts+1] = "  [COOLDOWN] none active"
@@ -183,7 +164,6 @@ local subCommands = {
     add     = cmdAdd,
     remove  = cmdRemove,
     set     = cmdSet,
-    restore = cmdRestore,
     debug   = cmdDebug,
 }
 
