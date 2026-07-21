@@ -53,7 +53,7 @@ AuroraLife.DEATH_COOLDOWN_SECS = 5
 AuroraLife.LOG_TAG = "[AuroraLife]"
 
 -- ── Default sandbox fallbacks (used when SandboxVars not ready)
-AuroraLife.DEFAULT_STARTING_LIVES                   = 5
+AuroraLife.DEFAULT_STARTING_LIVES                   = 2
 AuroraLife.DEFAULT_ENABLE_SYSTEM                    = true
 AuroraLife.DEFAULT_KICK_ON_ELIMINATION              = true
 AuroraLife.DEFAULT_PRIVATE_DEATH_MESSAGE            = true
