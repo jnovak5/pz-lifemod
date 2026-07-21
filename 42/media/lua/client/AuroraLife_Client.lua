@@ -34,6 +34,14 @@ local function showEliminationMessage(text)
     printToChat(text, 1.0, 0.15, 0.15)
 end
 
+-- Helper to safely call Java methods without spamming console errors if they don't exist
+local function safeCall(obj, method, ...)
+    if obj and obj[method] then 
+        return pcall(obj[method], obj, ...)
+    end
+    return false, "method not found"
+end
+
 -- ============================================================
 -- OnServerCommand — receive messages sent by the server
 -- Only handles AuroraLife module commands.
@@ -138,11 +146,6 @@ local function checkPlayerHealth(player)
             end
             
             -- Aggressively force state continuously to prevent engine death sequences
-            -- Helper to safely call Java methods without spamming console errors if they don't exist
-            local function safeCall(obj, method, ...)
-                if obj and obj[method] then pcall(function(...) obj[method](obj, ...) end, ...) end
-            end
-            
             local bd = player:getBodyDamage()
             if not bd then return end
             
@@ -234,9 +237,10 @@ local function checkPlayerHealth(player)
     if bodyHealth < 35.0 then
         -- Check if it's an inescapable drag-down
         local isDragDown = false
-        pcall(function()
-            if player:isDeathDragDown() then isDragDown = true end
-        end)
+        if player.isDeathDragDown then
+            local ok, res = pcall(player.isDeathDragDown, player)
+            if ok and res then isDragDown = true end
+        end
         
         -- Fallback heuristic for drag-down detection if the API method is missing
         if not isDragDown and SandboxVars.Zombies and SandboxVars.Zombies.DragDown then
@@ -253,12 +257,6 @@ local function checkPlayerHealth(player)
         -- Intercept death!
         local bd = player:getBodyDamage()
         if not bd then return end
-        
-        -- Completely heal all individual body parts and remove all infections/bleeding
-        -- Helper to safely call Java methods without spamming console errors if they don't exist
-        local function safeCall(obj, method, ...)
-            if obj and obj[method] then pcall(function(...) obj[method](obj, ...) end, ...) end
-        end
 
         -- Completely heal all individual body parts and remove all infections/bleeding
         for i=0, bd:getBodyParts():size()-1 do
@@ -369,8 +367,11 @@ Events.OnPlayerUpdate.Add(checkPlayerHealth)
 -- ============================================================
 -- UI Hook: Draw Lives on Character Info Screen
 -- ============================================================
+local isUIHooked = false
 local function initializeUIHooks()
     if not ISCharacterScreen then return end
+    if isUIHooked then return end
+    isUIHooked = true
 
     local original_ISCharacterScreen_render = ISCharacterScreen.render
     function ISCharacterScreen:render()
