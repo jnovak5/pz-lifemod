@@ -20,7 +20,7 @@ local _loaded     = false        -- true after initial load succeeded
 local _dataPath   = nil          -- resolved on first call to _resolvePath()
 local _backupDir  = nil
 
-local MAX_BACKUPS = 10
+local MAX_BACKUPS = 5
 
 -- ============================================================
 -- Path helpers
@@ -50,7 +50,14 @@ local function _encodeValue(v)
     local t = type(v)
     if t == "nil"     then return "null"
     elseif t == "boolean" then return v and "true" or "false"
-    elseif t == "number"  then return tostring(v)
+    elseif t == "number"  then
+        -- Prevent scientific notation for large numbers like timestamps
+        local str = string.format("%.6f", v)
+        if str:find("%.") then
+            str = str:gsub("0+$", "")
+            str = str:gsub("%.$", "")
+        end
+        return str
     elseif t == "string"  then
         -- escape backslashes, double-quotes, newlines
         v = v:gsub('\\', '\\\\'):gsub('"', '\\"'):gsub('\n', '\\n'):gsub('\r', '\\r')
@@ -329,9 +336,9 @@ end
 -- ============================================================
 function DS.periodicTick()
     DS.flushIfDirty()
-    -- Rotate backups every ~30 minutes (every 3rd tick of EveryTenMinutes)
+    -- Rotate backups every 12 in-game hours (every 72nd tick of EveryTenMinutes)
     DS._tickCount = (DS._tickCount or 0) + 1
-    if DS._tickCount % 3 == 0 then
+    if DS._tickCount % 72 == 0 then
         DS.createBackup()
         DS.pruneBackups(MAX_BACKUPS)
     end

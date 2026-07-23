@@ -64,8 +64,6 @@ local function attemptWhitelistRemoval(username)
         local whitelistDir = saveRoot .. "/Server/"
 
         -- Find whitelist file (first match)
-        local lf = io.open(whitelistDir .. "_list.tmp", "w")
-        if lf then lf:close() end
         os.execute('ls "' .. whitelistDir .. '"*.whitelist 2>/dev/null > "' .. whitelistDir .. '_wlist.tmp" || ' ..
                    'dir /b "' .. whitelistDir .. '"*.whitelist 2>nul > "' .. whitelistDir .. '_wlist.tmp"')
 

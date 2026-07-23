@@ -46,8 +46,8 @@ local function _resolveCause(character)
     return (ok and cause) or "unknown"
 end
 
--- ── Internal: apply elimination effects ──────────────────────
-local function _applyElimination(player, record)
+-- ── Public: apply elimination effects ──────────────────────
+function DH.eliminatePlayer(player, record)
     -- Log elimination but do not kick.
     
     -- Whitelist removal (death-triggered elimination)
@@ -199,7 +199,7 @@ function DH.handleDeath(character)
     -- Notify player
     local player = character  -- IsoPlayer IS the character for players
     if record.eliminated then
-        _applyElimination(player, record)
+        DH.eliminatePlayer(player, record)
     else
         local msgEnabled = AuroraLife.getSandboxCfg("EnablePrivateDeathMessage", AuroraLife.DEFAULT_PRIVATE_DEATH_MESSAGE)
         if msgEnabled then

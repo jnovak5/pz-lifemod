@@ -18,10 +18,17 @@ local Adm  = AuroraLife.Admin
 local Cmds = AuroraLife.Commands
 local LOG  = AuroraLife.Logger
 
+AuroraLife.Server = AuroraLife.Server or {}
+
 -- ============================================================
 -- OnServerStarted — load data, write startup backup
 -- ============================================================
-local function onServerStarted()
+if AuroraLife.Server.onServerStarted then Events.OnServerStarted.Remove(AuroraLife.Server.onServerStarted) end
+if AuroraLife.Server.onServerStarted then
+    if Events.OnGameStart then Events.OnGameStart.Remove(AuroraLife.Server.onServerStarted) end
+end
+
+AuroraLife.Server.onServerStarted = function()
     if not AuroraLife.isMultiplayerSession() then
         print(AuroraLife.LOG_TAG .. " [SYSTEM] Singleplayer detected — AuroraLife is multiplayer-only. System inactive.")
         return
@@ -34,7 +41,9 @@ end
 -- ============================================================
 -- OnPlayerDeath — primary death hook (Build 42+)
 -- ============================================================
-local function onPlayerDeath(player)
+if AuroraLife.Server.onPlayerDeath then Events.OnPlayerDeath.Remove(AuroraLife.Server.onPlayerDeath) end
+
+AuroraLife.Server.onPlayerDeath = function(player)
     -- OnPlayerDeath passes the IsoPlayer object directly
     DH.handleDeath(player)
 end
@@ -44,7 +53,9 @@ end
 -- The cooldown guard in DeathHandler prevents double-processing
 -- if both events fire for the same player within 5 seconds.
 -- ============================================================
-local function onCharacterDeath(character)
+if AuroraLife.Server.onCharacterDeath then Events.OnCharacterDeath.Remove(AuroraLife.Server.onCharacterDeath) end
+
+AuroraLife.Server.onCharacterDeath = function(character)
     DH.handleDeath(character)
 end
 
@@ -55,7 +66,9 @@ end
 -- ============================================================
 -- EveryTenMinutes — periodic save + backup rotation
 -- ============================================================
-local function onEveryTenMinutes()
+if AuroraLife.Server.onEveryTenMinutes then Events.EveryTenMinutes.Remove(AuroraLife.Server.onEveryTenMinutes) end
+
+AuroraLife.Server.onEveryTenMinutes = function()
     DS.periodicTick()
     DH.purgeCooldowns()
 end
@@ -64,7 +77,9 @@ end
 -- OnClientCommand — inbound requests from client UI / context menu
 -- Signature: module (string), command (string), player, args (table)
 -- ============================================================
-local function onClientCommand(module, command, player, args)
+if AuroraLife.Server.onClientCommand then Events.OnClientCommand.Remove(AuroraLife.Server.onClientCommand) end
+
+AuroraLife.Server.onClientCommand = function(module, command, player, args)
     if module ~= AuroraLife.MODULE then return end
 
     -- Ensure DataStore is loaded (fallback for when OnServerStarted doesn't fire)
@@ -232,7 +247,9 @@ end
 --       both the standard OnServerCommand path AND the
 --       OnPlayerSay path as a fallback below.
 -- ============================================================
-local function onServerCommand(module, command, player, args)
+if AuroraLife.Server.onServerCommand then Events.OnServerCommand.Remove(AuroraLife.Server.onServerCommand) end
+
+AuroraLife.Server.onServerCommand = function(module, command, player, args)
     -- Route /lifes commands (module will be "default" or similar for chat)
     -- Some PZ versions pass the full text as the command.
     if command and command:lower():match("^lifes") then
@@ -245,7 +262,9 @@ end
 -- In some PZ builds, typed /commands arrive here rather than
 -- OnServerCommand if they are not registered game commands.
 -- ============================================================
-local function onPlayerSay(player, message)
+if AuroraLife.Server.onPlayerSay then Events.OnPlayerSay.Remove(AuroraLife.Server.onPlayerSay) end
+
+AuroraLife.Server.onPlayerSay = function(player, message)
     if not message then return end
     local trimmed = message:match("^%s*/(%S.*)$")  -- strip leading "/"
     if trimmed and trimmed:lower():match("^lifes") then
@@ -256,16 +275,20 @@ end
 -- ============================================================
 -- Register all events
 -- ============================================================
-Events.OnServerStarted.Add(onServerStarted)
-Events.OnPlayerDeath.Add(onPlayerDeath)
-Events.OnCharacterDeath.Add(onCharacterDeath)
-Events.EveryTenMinutes.Add(onEveryTenMinutes)
-Events.OnClientCommand.Add(onClientCommand)
-Events.OnServerCommand.Add(onServerCommand)
+Events.OnServerStarted.Add(AuroraLife.Server.onServerStarted)
+Events.OnPlayerDeath.Add(AuroraLife.Server.onPlayerDeath)
+Events.OnCharacterDeath.Add(AuroraLife.Server.onCharacterDeath)
+Events.EveryTenMinutes.Add(AuroraLife.Server.onEveryTenMinutes)
+Events.OnClientCommand.Add(AuroraLife.Server.onClientCommand)
+Events.OnServerCommand.Add(AuroraLife.Server.onServerCommand)
 
 -- Fallback: OnGameStart fires in co-op when OnServerStarted may not
 if Events.OnGameStart then
-    Events.OnGameStart.Add(onServerStarted)
+    Events.OnGameStart.Add(AuroraLife.Server.onServerStarted)
+end
+
+if Events.OnPlayerSay then
+    Events.OnPlayerSay.Add(AuroraLife.Server.onPlayerSay)
 end
 
 LOG.logSystem("AuroraLife_Server.lua loaded — events registered.")

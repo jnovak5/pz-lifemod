@@ -88,7 +88,11 @@ end
 -- OnFillWorldObjectContextMenu — inject menu on right-click
 -- Signature: playerIndex, context, worldObjects, test
 -- ============================================================
-local function onFillWorldObjectContextMenu(playerIndex, context, worldObjects, test)
+if AuroraLife.UI.onFillWorldObjectContextMenu then
+    Events.OnFillWorldObjectContextMenu.Remove(AuroraLife.UI.onFillWorldObjectContextMenu)
+end
+
+AuroraLife.UI.onFillWorldObjectContextMenu = function(playerIndex, context, worldObjects, test)
     if test then return end
     if not worldObjects then return end
     local localPlayer = getSpecificPlayer(playerIndex)
@@ -130,4 +134,4 @@ end
 -- ============================================================
 -- Register event
 -- ============================================================
-Events.OnFillWorldObjectContextMenu.Add(onFillWorldObjectContextMenu)
+Events.OnFillWorldObjectContextMenu.Add(AuroraLife.UI.onFillWorldObjectContextMenu)

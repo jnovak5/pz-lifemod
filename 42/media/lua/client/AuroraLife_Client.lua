@@ -34,11 +34,27 @@ local function showEliminationMessage(text)
     printToChat(text, 1.0, 0.15, 0.15)
 end
 
+-- Helper to safely call Java methods without spamming console errors if they don't exist
+local function safeCall(obj, method, ...)
+    if obj and obj[method] then 
+        local ok, err = pcall(obj[method], obj, ...)
+        if not ok then
+            print("[AuroraLife] safeCall error on '" .. tostring(method) .. "': " .. tostring(err))
+        end
+        return ok, err
+    end
+    return false, "method not found"
+end
+
 -- ============================================================
 -- OnServerCommand — receive messages sent by the server
 -- Only handles AuroraLife module commands.
 -- ============================================================
-local function onServerCommand(module, command, args)
+if AuroraLife.Client.onServerCommand then
+    Events.OnServerCommand.Remove(AuroraLife.Client.onServerCommand)
+end
+
+AuroraLife.Client.onServerCommand = function(module, command, args)
     if module ~= AuroraLife.MODULE then return end
 
     -- ── Life update notification ──────────────────────────────
@@ -73,19 +89,23 @@ local function onServerCommand(module, command, args)
     end
 end
 
-Events.OnServerCommand.Add(onServerCommand)
+Events.OnServerCommand.Add(AuroraLife.Client.onServerCommand)
 
 -- ============================================================
 -- OnCreatePlayer — Notify server that we've connected
 -- ============================================================
-local function onCreatePlayer(playerIndex)
+if AuroraLife.Client.onCreatePlayer then
+    Events.OnCreatePlayer.Remove(AuroraLife.Client.onCreatePlayer)
+end
+
+AuroraLife.Client.onCreatePlayer = function(playerIndex)
     local player = getSpecificPlayer(playerIndex) or getPlayer()
     if player and player:isLocalPlayer() then
         -- Send initialization command to the server so it knows we connected
         sendClientCommand(player, AuroraLife.MODULE, AuroraLife.CMD_PLAYER_CONNECT, {})
     end
 end
-Events.OnCreatePlayer.Add(onCreatePlayer)
+Events.OnCreatePlayer.Add(AuroraLife.Client.onCreatePlayer)
 
 -- ============================================================
 -- True Resurrection: Intercept Death
@@ -93,8 +113,13 @@ Events.OnCreatePlayer.Add(onCreatePlayer)
 AuroraLife.Client.safetyNetEndTime = 0
 AuroraLife.Client.lastHealthCheckTime = 0
 AuroraLife.Client.lastSafetyNetWarning = 0
+AuroraLife.Client.lastSafetyNetWarning = 0
 
-local function checkPlayerHealth(player)
+if AuroraLife.Client.checkPlayerHealth then
+    Events.OnPlayerUpdate.Remove(AuroraLife.Client.checkPlayerHealth)
+end
+
+AuroraLife.Client.checkPlayerHealth = function(player)
     if not player or not player:isLocalPlayer() then return end
     
     local currentTime = os.time()
@@ -108,7 +133,7 @@ local function checkPlayerHealth(player)
             sendClientCommand(player, AuroraLife.MODULE, AuroraLife.CMD_SET_GODMODE, { enable = false })
             
             -- Adrenaline Knockback on expiration to give them space when God Mode drops
-            pcall(function()
+            local ok, err = pcall(function()
                 local cell = player:getCell()
                 if cell then
                     local zList = cell:getZombieList()
@@ -117,8 +142,21 @@ local function checkPlayerHealth(player)
                         for i=0, zList:size()-1 do
                             local zombie = zList:get(i)
                             if zombie and zombie:DistTo(player) < 2.5 then
+                                -- Clear targets so they stop eating
+                                zombie:setEatBodyTarget(nil, false)
+                                zombie:setTarget(nil)
+                                
+                                -- Standard knockback
                                 zombie:setStaggerBack(true)
                                 zombie:setKnockedDown(true)
+                                
+                                -- Crawlers often ignore setKnockedDown because they are already down.
+                                -- Force a state change to interrupt their attack animation.
+                                if zombie.isCrawling and zombie:isCrawling() then
+                                    zombie:setHitReaction("Stagger")
+                                    zombie:setVariable("HitReaction", "Stagger")
+                                end
+                                
                                 pushed = pushed + 1
                             end
                         end
@@ -128,6 +166,9 @@ local function checkPlayerHealth(player)
                     end
                 end
             end)
+            if not ok then
+                print("[AuroraLife] Knockback error: " .. tostring(err))
+            end
             
             showMessage("Your safety net has expired. Be careful!")
         else
@@ -138,11 +179,6 @@ local function checkPlayerHealth(player)
             end
             
             -- Aggressively force state continuously to prevent engine death sequences
-            -- Helper to safely call Java methods without spamming console errors if they don't exist
-            local function safeCall(obj, method, ...)
-                if obj and obj[method] then pcall(function(...) obj[method](obj, ...) end, ...) end
-            end
-            
             local bd = player:getBodyDamage()
             if not bd then return end
             
@@ -203,6 +239,8 @@ local function checkPlayerHealth(player)
     -- Throttle check to avoid excessive processing (check 10x a second)
     local curTimeMs = getTimestampMs()
     if curTimeMs - AuroraLife.Client.lastHealthCheckTime < 100 then return end
+    AuroraLife.Client.lastHealthCheckTime = curTimeMs
+    
     -- Only monitor local player
     if player ~= getPlayer() then return end
     
@@ -234,9 +272,10 @@ local function checkPlayerHealth(player)
     if bodyHealth < 35.0 then
         -- Check if it's an inescapable drag-down
         local isDragDown = false
-        pcall(function()
-            if player:isDeathDragDown() then isDragDown = true end
-        end)
+        if player.isDeathDragDown then
+            local ok, res = pcall(player.isDeathDragDown, player)
+            if ok and res then isDragDown = true end
+        end
         
         -- Fallback heuristic for drag-down detection if the API method is missing
         if not isDragDown and SandboxVars.Zombies and SandboxVars.Zombies.DragDown then
@@ -253,12 +292,6 @@ local function checkPlayerHealth(player)
         -- Intercept death!
         local bd = player:getBodyDamage()
         if not bd then return end
-        
-        -- Completely heal all individual body parts and remove all infections/bleeding
-        -- Helper to safely call Java methods without spamming console errors if they don't exist
-        local function safeCall(obj, method, ...)
-            if obj and obj[method] then pcall(function(...) obj[method](obj, ...) end, ...) end
-        end
 
         -- Completely heal all individual body parts and remove all infections/bleeding
         for i=0, bd:getBodyParts():size()-1 do
@@ -312,10 +345,10 @@ local function checkPlayerHealth(player)
         
         safeCall(player, "setActionContextState", "idle")
         safeCall(player, "setStaggerTime", 0)
-        safeCall(player, "setEatBodyTarget", nil, nil)
+        safeCall(player, "setEatBodyTarget", nil, false)
         
         -- Adrenaline Knockback: Stagger and knock down nearby zombies to guarantee escape
-        pcall(function()
+        local ok, err = pcall(function()
             local cell = player:getCell()
             if cell then
                 local zList = cell:getZombieList()
@@ -324,8 +357,21 @@ local function checkPlayerHealth(player)
                     for i=0, zList:size()-1 do
                         local zombie = zList:get(i)
                         if zombie and zombie:DistTo(player) < 2.5 then
+                            -- Clear targets so they stop eating
+                            zombie:setEatBodyTarget(nil, false)
+                            zombie:setTarget(nil)
+                            
+                            -- Standard knockback
                             zombie:setStaggerBack(true)
                             zombie:setKnockedDown(true)
+                            
+                            -- Crawlers often ignore setKnockedDown because they are already down.
+                            -- Force a state change to interrupt their attack animation.
+                            if zombie.isCrawling and zombie:isCrawling() then
+                                zombie:setHitReaction("Stagger")
+                                zombie:setVariable("HitReaction", "Stagger")
+                            end
+                            
                             pushed = pushed + 1
                         end
                     end
@@ -337,6 +383,9 @@ local function checkPlayerHealth(player)
                 end
             end
         end)
+        if not ok then
+            print("[AuroraLife] Safety Net Knockback error: " .. tostring(err))
+        end
         
         -- Make player invulnerable and untargetable for the safety net duration (30 seconds)
         safeCall(player, "setGodMod", true)
@@ -356,21 +405,19 @@ local function checkPlayerHealth(player)
         sendClientCommand(player, AuroraLife.MODULE, AuroraLife.CMD_CONSUME_LIFE, {})
     end
 end
-
-local function onPlayerJoined(playerIndex)
-    local player = getSpecificPlayer(playerIndex) or getPlayer()
-    if player and player:isLocalPlayer() then
-        -- Initialization is now handled in checkPlayerHealth after a 3-second delay
-    end
-end
-Events.OnCreatePlayer.Add(onPlayerJoined)
-Events.OnPlayerUpdate.Add(checkPlayerHealth)
+Events.OnPlayerUpdate.Add(AuroraLife.Client.checkPlayerHealth)
 
 -- ============================================================
 -- UI Hook: Draw Lives on Character Info Screen
 -- ============================================================
-local function initializeUIHooks()
+if AuroraLife.Client.initializeUIHooks then
+    Events.OnGameStart.Remove(AuroraLife.Client.initializeUIHooks)
+end
+
+AuroraLife.Client.initializeUIHooks = function()
     if not ISCharacterScreen then return end
+    if ISCharacterScreen.AuroraLifeHooked then return end
+    ISCharacterScreen.AuroraLifeHooked = true
 
     local original_ISCharacterScreen_render = ISCharacterScreen.render
     function ISCharacterScreen:render()
@@ -392,23 +439,9 @@ local function initializeUIHooks()
                 local x = 20 + math.max(textWid1, math.max(textWid2, textWid3))
 
                 -- Calculate the exact Z coordinate where vanilla finished drawing
-                local z = self.literatureButton:getBottom()
+                -- The literatureButton ("Discovered Recipes and Media") is at the bottom of the stat list
+                local z = self.literatureButton:getBottom() + 15
                 local BUTTON_HGT = math.max(25, getTextManager():getFontHeight(UIFont.Small) + 3 * 2)
-                z = math.max(z + 10, self.avatarY + self.avatarHeight + 10 + 2)
-                
-                -- Account for Favourite Weapon
-                if self.favouriteWeapon then
-                    z = z + BUTTON_HGT
-                end
-                
-                -- Account for Zombies Killed
-                z = z + BUTTON_HGT
-                
-                -- Account for Survived For (if they have a watch)
-                local clock = UIManager.getClock()
-                if clock and clock:isDateVisible() then
-                    z = z + BUTTON_HGT
-                end
                 
                 -- Draw the AuroraLife counter precisely underneath the last drawn vanilla stat
                 self:drawTextRight("Lives Remaining", x, z, 1, 1, 1, 1, UIFont.Small)
@@ -423,11 +456,12 @@ local function initializeUIHooks()
                 
                 self:drawText(tostring(lives) .. " / " .. tostring(maxLives), x + 10, z, r, g, b, 1.0, UIFont.Small)
                 
-                -- Push the window height down so it doesn't clip our new text
-                self:setHeightAndParentHeight(z + BUTTON_HGT + 10)
+                -- Push the window height down so it doesn't clip our new text or the avatar
+                local finalHeight = math.max(z + BUTTON_HGT + 10, self.avatarY + self.avatarHeight + 10 + 2)
+                self:setHeightAndParentHeight(finalHeight)
             end
         end
     end
 end
 
-Events.OnGameStart.Add(initializeUIHooks)
+Events.OnGameStart.Add(AuroraLife.Client.initializeUIHooks)
