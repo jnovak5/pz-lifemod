@@ -165,6 +165,7 @@ local function _writeFile(path, content)
             if f then
                 f:write(content)
                 f:close()
+                print("[AuroraLife] DataStore: successfully saved to absolute path: " .. tostring(absPath))
                 return true
             end
         end
@@ -176,6 +177,7 @@ local function _writeFile(path, content)
     
     writer:write(content)
     writer:close()
+    print("[AuroraLife] DataStore: successfully saved using getModFileWriter to: " .. tostring(path))
     return true
 end
 
