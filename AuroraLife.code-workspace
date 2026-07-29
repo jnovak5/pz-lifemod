@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../AuroraLifeLocal"
+		}
+	],
+	"settings": {
+		"powershell.cwd": "AuroraLife"
+	}
+}

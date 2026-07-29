@@ -125,9 +125,25 @@ end
 -- ============================================================
 
 local function _readFile(path)
-    -- getModFileReader(modID, fileName, createIfNull)
-    -- Use standard getFileReader which writes/reads from Zomboid/Lua/ or Server Saves dir
-    local reader = getFileReader(path, false)
+    -- Try the absolute path first (most reliable on dedicated servers)
+    if getModFileRecordFileFullPath then
+        local absPath = getModFileRecordFileFullPath(path)
+        if absPath then
+            local f = io.open(absPath, "r")
+            if f then
+                local content = f:read("*a")
+                f:close()
+                return content
+            end
+        end
+    end
+
+    -- Fallbacks
+    local reader = getModFileReader(AuroraLife.MODULE, path, false)
+    if not reader then
+        -- fallback for legacy data location
+        reader = getFileReader(path, false)
+    end
     if not reader then return nil, "file not found" end
     
     local content = ""
@@ -141,13 +157,27 @@ local function _readFile(path)
 end
 
 local function _writeFile(path, content)
-    -- getModFileWriter(modID, fileName, createIfNull, append)
-    -- Use standard getFileWriter which reliably writes to Zomboid/Lua or Server Saves
-    local writer = getFileWriter(path, true, false)
+    -- Primary write using absolute path
+    if getModFileRecordFileFullPath then
+        local absPath = getModFileRecordFileFullPath(path)
+        if absPath then
+            local f = io.open(absPath, "w")
+            if f then
+                f:write(content)
+                f:close()
+                print("[AuroraLife] DataStore: successfully saved to absolute path: " .. tostring(absPath))
+                return true
+            end
+        end
+    end
+
+    -- Fallback to Zomboid's API
+    local writer = getModFileWriter(AuroraLife.MODULE, path, true, false)
     if not writer then return false, "cannot open file" end
     
     writer:write(content)
     writer:close()
+    print("[AuroraLife] DataStore: successfully saved using getModFileWriter to: " .. tostring(path))
     return true
 end
 
