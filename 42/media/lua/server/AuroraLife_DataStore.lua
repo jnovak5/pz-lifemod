@@ -125,7 +125,20 @@ end
 -- ============================================================
 
 local function _readFile(path)
-    -- getModFileReader(modID, fileName, createIfNull)
+    -- Try the absolute path first (most reliable on dedicated servers)
+    if getModFileRecordFileFullPath then
+        local absPath = getModFileRecordFileFullPath(path)
+        if absPath then
+            local f = io.open(absPath, "r")
+            if f then
+                local content = f:read("*a")
+                f:close()
+                return content
+            end
+        end
+    end
+
+    -- Fallbacks
     local reader = getModFileReader(AuroraLife.MODULE, path, false)
     if not reader then
         -- fallback for legacy data location
@@ -144,7 +157,20 @@ local function _readFile(path)
 end
 
 local function _writeFile(path, content)
-    -- getModFileWriter(modID, fileName, createIfNull, append)
+    -- Primary write using absolute path
+    if getModFileRecordFileFullPath then
+        local absPath = getModFileRecordFileFullPath(path)
+        if absPath then
+            local f = io.open(absPath, "w")
+            if f then
+                f:write(content)
+                f:close()
+                return true
+            end
+        end
+    end
+
+    -- Fallback to Zomboid's API
     local writer = getModFileWriter(AuroraLife.MODULE, path, true, false)
     if not writer then return false, "cannot open file" end
     
