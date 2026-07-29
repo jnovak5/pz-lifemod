@@ -126,8 +126,11 @@ end
 
 local function _readFile(path)
     -- getModFileReader(modID, fileName, createIfNull)
-    -- Use standard getFileReader which writes/reads from Zomboid/Lua/ or Server Saves dir
-    local reader = getFileReader(path, false)
+    local reader = getModFileReader(AuroraLife.MODULE, path, false)
+    if not reader then
+        -- fallback for legacy data location
+        reader = getFileReader(path, false)
+    end
     if not reader then return nil, "file not found" end
     
     local content = ""
@@ -142,8 +145,7 @@ end
 
 local function _writeFile(path, content)
     -- getModFileWriter(modID, fileName, createIfNull, append)
-    -- Use standard getFileWriter which reliably writes to Zomboid/Lua or Server Saves
-    local writer = getFileWriter(path, true, false)
+    local writer = getModFileWriter(AuroraLife.MODULE, path, true, false)
     if not writer then return false, "cannot open file" end
     
     writer:write(content)
