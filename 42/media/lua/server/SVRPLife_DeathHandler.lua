@@ -1,18 +1,18 @@
 -- ============================================================
--- AuroraLife_DeathHandler.lua
+-- SVRPLife_DeathHandler.lua
 -- Server-side death processing pipeline.
 -- Deducts one life per confirmed, unique death event.
 -- ============================================================
 
-require "AuroraLife_Shared"
-require "AuroraLife_DataStore"
-require "AuroraLife_Logger"
+require "SVRPLife_Shared"
+require "SVRPLife_DataStore"
+require "SVRPLife_Logger"
 
-AuroraLife.DeathHandler = AuroraLife.DeathHandler or {}
+SVRPLife.DeathHandler = SVRPLife.DeathHandler or {}
 
-local DH  = AuroraLife.DeathHandler
-local DS  = AuroraLife.DataStore
-local LOG = AuroraLife.Logger
+local DH  = SVRPLife.DeathHandler
+local DS  = SVRPLife.DataStore
+local LOG = SVRPLife.Logger
 
 -- ── Duplicate-death cooldown table ───────────────────────────
 -- [username] = epoch-second of last confirmed death
@@ -22,7 +22,7 @@ local _cooldown = {}
 local function _purgeCooldowns()
     local now = os.time()
     for uname, ts in pairs(_cooldown) do
-        if (now - ts) >= AuroraLife.DEATH_COOLDOWN_SECS then
+        if (now - ts) >= SVRPLife.DEATH_COOLDOWN_SECS then
             _cooldown[uname] = nil
         end
     end
@@ -51,9 +51,9 @@ function DH.eliminatePlayer(player, record)
     -- Log elimination but do not kick.
     
     -- Whitelist removal (death-triggered elimination)
-    local wlEnabled = AuroraLife.getSandboxCfg(
+    local wlEnabled = SVRPLife.getSandboxCfg(
         "RemoveFromWhitelistOnElimination",
-        AuroraLife.DEFAULT_REMOVE_WHITELIST_ON_ELIMINATION
+        SVRPLife.DEFAULT_REMOVE_WHITELIST_ON_ELIMINATION
     )
     if wlEnabled then
         local ok1 = pcall(function()
@@ -73,10 +73,10 @@ function DH.eliminatePlayer(player, record)
         end
     end
     -- Send private elimination notification
-    local msgEnabled = AuroraLife.getSandboxCfg("EnablePrivateDeathMessage", AuroraLife.DEFAULT_PRIVATE_DEATH_MESSAGE)
+    local msgEnabled = SVRPLife.getSandboxCfg("EnablePrivateDeathMessage", SVRPLife.DEFAULT_PRIVATE_DEATH_MESSAGE)
     if msgEnabled then
         local msg = "You have used all of your lives and have been eliminated. Contact a server administrator for assistance."
-        sendServerCommand(player, AuroraLife.MODULE, AuroraLife.CMD_ELIMINATED, { message = msg })
+        sendServerCommand(player, SVRPLife.MODULE, SVRPLife.CMD_ELIMINATED, { message = msg })
     end
 
 
@@ -89,12 +89,12 @@ end
 -- ============================================================
 function DH.handleDeath(character)
     -- Guard: system enabled?
-    if not AuroraLife.getSandboxCfg("EnableSystem", AuroraLife.DEFAULT_ENABLE_SYSTEM) then
+    if not SVRPLife.getSandboxCfg("EnableSystem", SVRPLife.DEFAULT_ENABLE_SYSTEM) then
         return
     end
 
     -- Guard: multiplayer only
-    if not AuroraLife.isMultiplayerSession() then return end
+    if not SVRPLife.isMultiplayerSession() then return end
 
     -- Guard: must be a player, not zombie/NPC
     if not character or not instanceof(character, "IsoPlayer") then return end
@@ -117,7 +117,7 @@ function DH.handleDeath(character)
     local now = os.time()
     if _cooldown[username] then
         LOG.logWarn("DeathHandler: duplicate death suppressed for User=" .. username ..
-                    " (within " .. AuroraLife.DEATH_COOLDOWN_SECS .. "s cooldown).")
+                    " (within " .. SVRPLife.DEATH_COOLDOWN_SECS .. "s cooldown).")
         return
     end
     _cooldown[username] = now
@@ -180,8 +180,8 @@ function DH.handleDeath(character)
     }
 
     -- Clamp to minimum
-    if record.lives < AuroraLife.MIN_LIVES then
-        record.lives = AuroraLife.MIN_LIVES
+    if record.lives < SVRPLife.MIN_LIVES then
+        record.lives = SVRPLife.MIN_LIVES
     end
 
     -- Check elimination
@@ -201,13 +201,13 @@ function DH.handleDeath(character)
     if record.eliminated then
         DH.eliminatePlayer(player, record)
     else
-        local msgEnabled = AuroraLife.getSandboxCfg("EnablePrivateDeathMessage", AuroraLife.DEFAULT_PRIVATE_DEATH_MESSAGE)
+        local msgEnabled = SVRPLife.getSandboxCfg("EnablePrivateDeathMessage", SVRPLife.DEFAULT_PRIVATE_DEATH_MESSAGE)
         if msgEnabled then
             local msg = string.format(
                 "You have died. Remaining lives: %d/%d",
                 record.lives, record.maxLives
             )
-            sendServerCommand(player, AuroraLife.MODULE, AuroraLife.CMD_LIFE_UPDATE, {
+            sendServerCommand(player, SVRPLife.MODULE, SVRPLife.CMD_LIFE_UPDATE, {
                 lives    = record.lives,
                 maxLives = record.maxLives,
                 message  = msg,

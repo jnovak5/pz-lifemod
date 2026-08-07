@@ -1,23 +1,23 @@
 -- ============================================================
--- AuroraLife_Client.lua
+-- SVRPLife_Client.lua
 -- Client-side receiver for server notifications.
 -- ONLY displays messages to the local player.
 -- Cannot modify lives, elimination status, or any game state.
 -- ============================================================
 
-require "AuroraLife_Shared"
+require "SVRPLife_Shared"
 require "ISUI/ISCharacterScreen"
 
-AuroraLife.Client = AuroraLife.Client or {}
+SVRPLife.Client = SVRPLife.Client or {}
 
 -- ── Store local player life data ───────────────────────────────
-AuroraLife.Client.lives = nil
-AuroraLife.Client.maxLives = nil
+SVRPLife.Client.lives = nil
+SVRPLife.Client.maxLives = nil
 
 local function printToChat(text, r, g, b)
     -- Display a halo note over the player's head instead of writing to the chat box.
     -- We must avoid ISChat.addLineInChat because it causes critical conflicts with 
-    -- other chat mods (like Aurora Chat) which expect strict Java ChatMessage objects.
+    -- other chat mods (like SVRP Chat) which expect strict Java ChatMessage objects.
     if getPlayer() then
         -- Increased duration from 350 to 500 for better visibility
         getPlayer():setHaloNote(text, (r or 1)*255, (g or 1)*255, (b or 1)*255, 500)
@@ -39,7 +39,7 @@ local function safeCall(obj, method, ...)
     if obj and obj[method] then 
         local ok, err = pcall(obj[method], obj, ...)
         if not ok then
-            print("[AuroraLife] safeCall error on '" .. tostring(method) .. "': " .. tostring(err))
+            print("[SVRPLife] safeCall error on '" .. tostring(method) .. "': " .. tostring(err))
         end
         return ok, err
     end
@@ -48,22 +48,22 @@ end
 
 -- ============================================================
 -- OnServerCommand — receive messages sent by the server
--- Only handles AuroraLife module commands.
+-- Only handles SVRPLife module commands.
 -- ============================================================
-if AuroraLife.Client.onServerCommand then
-    Events.OnServerCommand.Remove(AuroraLife.Client.onServerCommand)
+if SVRPLife.Client.onServerCommand then
+    Events.OnServerCommand.Remove(SVRPLife.Client.onServerCommand)
 end
 
-AuroraLife.Client.onServerCommand = function(module, command, args)
-    if module ~= AuroraLife.MODULE then return end
+SVRPLife.Client.onServerCommand = function(module, command, args)
+    if module ~= SVRPLife.MODULE then return end
 
     -- ── Life update notification ──────────────────────────────
-    if command == AuroraLife.CMD_LIFE_UPDATE then
-        print("[AuroraLife] Client received CMD_LIFE_UPDATE!")
+    if command == SVRPLife.CMD_LIFE_UPDATE then
+        print("[SVRPLife] Client received CMD_LIFE_UPDATE!")
         if args and args.lives then
-            AuroraLife.Client.lives = args.lives
-            AuroraLife.Client.maxLives = args.maxLives
-            print("[AuroraLife] Client lives set to: " .. tostring(AuroraLife.Client.lives))
+            SVRPLife.Client.lives = args.lives
+            SVRPLife.Client.maxLives = args.maxLives
+            print("[SVRPLife] Client lives set to: " .. tostring(SVRPLife.Client.lives))
         end
         local msg = args and args.message
         if msg then
@@ -71,7 +71,7 @@ AuroraLife.Client.onServerCommand = function(module, command, args)
         end
 
     -- ── Elimination notification ──────────────────────────────
-    elseif command == AuroraLife.CMD_ELIMINATED then
+    elseif command == SVRPLife.CMD_ELIMINATED then
         local msg = (args and args.message) or
                     "You have been eliminated. Contact a server administrator."
         showEliminationMessage(msg)
@@ -89,48 +89,48 @@ AuroraLife.Client.onServerCommand = function(module, command, args)
     end
 end
 
-Events.OnServerCommand.Add(AuroraLife.Client.onServerCommand)
+Events.OnServerCommand.Add(SVRPLife.Client.onServerCommand)
 
 -- ============================================================
 -- OnCreatePlayer — Notify server that we've connected
 -- ============================================================
-if AuroraLife.Client.onCreatePlayer then
-    Events.OnCreatePlayer.Remove(AuroraLife.Client.onCreatePlayer)
+if SVRPLife.Client.onCreatePlayer then
+    Events.OnCreatePlayer.Remove(SVRPLife.Client.onCreatePlayer)
 end
 
-AuroraLife.Client.onCreatePlayer = function(playerIndex)
+SVRPLife.Client.onCreatePlayer = function(playerIndex)
     local player = getSpecificPlayer(playerIndex) or getPlayer()
     if player and player:isLocalPlayer() then
         -- Send initialization command to the server so it knows we connected
-        sendClientCommand(player, AuroraLife.MODULE, AuroraLife.CMD_PLAYER_CONNECT, {})
+        sendClientCommand(player, SVRPLife.MODULE, SVRPLife.CMD_PLAYER_CONNECT, {})
     end
 end
-Events.OnCreatePlayer.Add(AuroraLife.Client.onCreatePlayer)
+Events.OnCreatePlayer.Add(SVRPLife.Client.onCreatePlayer)
 
 -- ============================================================
 -- True Resurrection: Intercept Death
 -- ============================================================
-AuroraLife.Client.safetyNetEndTime = 0
-AuroraLife.Client.lastHealthCheckTime = 0
-AuroraLife.Client.lastSafetyNetWarning = 0
-AuroraLife.Client.lastSafetyNetWarning = 0
+SVRPLife.Client.safetyNetEndTime = 0
+SVRPLife.Client.lastHealthCheckTime = 0
+SVRPLife.Client.lastSafetyNetWarning = 0
+SVRPLife.Client.lastSafetyNetWarning = 0
 
-if AuroraLife.Client.checkPlayerHealth then
-    Events.OnPlayerUpdate.Remove(AuroraLife.Client.checkPlayerHealth)
+if SVRPLife.Client.checkPlayerHealth then
+    Events.OnPlayerUpdate.Remove(SVRPLife.Client.checkPlayerHealth)
 end
 
-AuroraLife.Client.checkPlayerHealth = function(player)
+SVRPLife.Client.checkPlayerHealth = function(player)
     if not player or not player:isLocalPlayer() then return end
     
     local currentTime = os.time()
 
     -- ── 1. Safety Net Timer ──
-    if AuroraLife.Client.safetyNetEndTime > 0 then
-        if currentTime > AuroraLife.Client.safetyNetEndTime then
-            AuroraLife.Client.safetyNetEndTime = 0
+    if SVRPLife.Client.safetyNetEndTime > 0 then
+        if currentTime > SVRPLife.Client.safetyNetEndTime then
+            SVRPLife.Client.safetyNetEndTime = 0
             player:setGodMod(false)
             player:setGhostMode(false)
-            sendClientCommand(player, AuroraLife.MODULE, AuroraLife.CMD_SET_GODMODE, { enable = false })
+            sendClientCommand(player, SVRPLife.MODULE, SVRPLife.CMD_SET_GODMODE, { enable = false })
             
             -- Adrenaline Knockback on expiration to give them space when God Mode drops
             local ok, err = pcall(function()
@@ -161,20 +161,20 @@ AuroraLife.Client.checkPlayerHealth = function(player)
                             end
                         end
                         if pushed > 0 then
-                            sendClientCommand(player, AuroraLife.MODULE, AuroraLife.CMD_LOG_EVENT, { message = "Knocked back " .. pushed .. " zombies upon safety net expiration." })
+                            sendClientCommand(player, SVRPLife.MODULE, SVRPLife.CMD_LOG_EVENT, { message = "Knocked back " .. pushed .. " zombies upon safety net expiration." })
                         end
                     end
                 end
             end)
             if not ok then
-                print("[AuroraLife] Knockback error: " .. tostring(err))
+                print("[SVRPLife] Knockback error: " .. tostring(err))
             end
             
             showMessage("Your safety net has expired. Be careful!")
         else
-            local remaining = AuroraLife.Client.safetyNetEndTime - currentTime
-            if remaining <= 10 and currentTime > AuroraLife.Client.lastSafetyNetWarning then
-                AuroraLife.Client.lastSafetyNetWarning = currentTime
+            local remaining = SVRPLife.Client.safetyNetEndTime - currentTime
+            if remaining <= 10 and currentTime > SVRPLife.Client.lastSafetyNetWarning then
+                SVRPLife.Client.lastSafetyNetWarning = currentTime
                 showMessage("Safety net expires in " .. string.format("%.2f", remaining) .. " seconds!")
             end
             
@@ -210,10 +210,10 @@ AuroraLife.Client.checkPlayerHealth = function(player)
             safeCall(player, "setGhostMode", true)
             
             local curTimeMs = getTimestampMs()
-            if not AuroraLife.Client.lastGodModeSync or curTimeMs - AuroraLife.Client.lastGodModeSync > 1000 then
-                AuroraLife.Client.lastGodModeSync = curTimeMs
-                sendClientCommand(player, AuroraLife.MODULE, AuroraLife.CMD_SET_GODMODE, { enable = true })
-                sendClientCommand(player, AuroraLife.MODULE, AuroraLife.CMD_HEAL_PLAYER, {})
+            if not SVRPLife.Client.lastGodModeSync or curTimeMs - SVRPLife.Client.lastGodModeSync > 1000 then
+                SVRPLife.Client.lastGodModeSync = curTimeMs
+                sendClientCommand(player, SVRPLife.MODULE, SVRPLife.CMD_SET_GODMODE, { enable = true })
+                sendClientCommand(player, SVRPLife.MODULE, SVRPLife.CMD_HEAL_PLAYER, {})
             end
             
             if player:getModData() then player:getModData().isDead = false end
@@ -238,27 +238,27 @@ AuroraLife.Client.checkPlayerHealth = function(player)
 
     -- Throttle check to avoid excessive processing (check 10x a second)
     local curTimeMs = getTimestampMs()
-    if curTimeMs - AuroraLife.Client.lastHealthCheckTime < 100 then return end
-    AuroraLife.Client.lastHealthCheckTime = curTimeMs
+    if curTimeMs - SVRPLife.Client.lastHealthCheckTime < 100 then return end
+    SVRPLife.Client.lastHealthCheckTime = curTimeMs
     
     -- Only monitor local player
     if player ~= getPlayer() then return end
     
     -- Initialize on first tick after 3 seconds
-    if not AuroraLife.Client.hasInitialized then
-        AuroraLife.Client.joinTime = AuroraLife.Client.joinTime or curTimeMs
-        if curTimeMs - AuroraLife.Client.joinTime > 3000 then
-            AuroraLife.Client.hasInitialized = true
-            sendClientCommand(player, AuroraLife.MODULE, AuroraLife.CMD_REQUEST_LIVES, {})
+    if not SVRPLife.Client.hasInitialized then
+        SVRPLife.Client.joinTime = SVRPLife.Client.joinTime or curTimeMs
+        if curTimeMs - SVRPLife.Client.joinTime > 3000 then
+            SVRPLife.Client.hasInitialized = true
+            sendClientCommand(player, SVRPLife.MODULE, SVRPLife.CMD_REQUEST_LIVES, {})
         end
         return
     end
     
     -- If we haven't received our life count yet, abort this tick
-    if AuroraLife.Client.lives == nil then return end
+    if SVRPLife.Client.lives == nil then return end
     
     -- Don't intercept if they are out of lives
-    if AuroraLife.Client.lives <= 0 then return end
+    if SVRPLife.Client.lives <= 0 then return end
 
     if player:isDead() then return end
 
@@ -376,48 +376,48 @@ AuroraLife.Client.checkPlayerHealth = function(player)
                         end
                     end
                     if pushed > 0 then
-                        sendClientCommand(player, AuroraLife.MODULE, AuroraLife.CMD_LOG_EVENT, { message = "Safety Net Triggered (Health: " .. bodyHealth .. "). Knocked back " .. pushed .. " zombies." })
+                        sendClientCommand(player, SVRPLife.MODULE, SVRPLife.CMD_LOG_EVENT, { message = "Safety Net Triggered (Health: " .. bodyHealth .. "). Knocked back " .. pushed .. " zombies." })
                     else
-                        sendClientCommand(player, AuroraLife.MODULE, AuroraLife.CMD_LOG_EVENT, { message = "Safety Net Triggered (Health: " .. bodyHealth .. "). No zombies in immediate range." })
+                        sendClientCommand(player, SVRPLife.MODULE, SVRPLife.CMD_LOG_EVENT, { message = "Safety Net Triggered (Health: " .. bodyHealth .. "). No zombies in immediate range." })
                     end
                 end
             end
         end)
         if not ok then
-            print("[AuroraLife] Safety Net Knockback error: " .. tostring(err))
+            print("[SVRPLife] Safety Net Knockback error: " .. tostring(err))
         end
         
         -- Make player invulnerable and untargetable for the safety net duration (30 seconds)
         safeCall(player, "setGodMod", true)
         safeCall(player, "setGhostMode", true)
-        sendClientCommand(player, AuroraLife.MODULE, AuroraLife.CMD_SET_GODMODE, { enable = true })
-        sendClientCommand(player, AuroraLife.MODULE, AuroraLife.CMD_HEAL_PLAYER, {})
-        AuroraLife.Client.lastGodModeSync = getTimestampMs()
-        AuroraLife.Client.safetyNetEndTime = currentTime + 30
-        AuroraLife.Client.lastSafetyNetWarning = 0
+        sendClientCommand(player, SVRPLife.MODULE, SVRPLife.CMD_SET_GODMODE, { enable = true })
+        sendClientCommand(player, SVRPLife.MODULE, SVRPLife.CMD_HEAL_PLAYER, {})
+        SVRPLife.Client.lastGodModeSync = getTimestampMs()
+        SVRPLife.Client.safetyNetEndTime = currentTime + 30
+        SVRPLife.Client.lastSafetyNetWarning = 0
 
         showMessage("You suffered a lethal injury but a life was consumed! You are invulnerable for 30 seconds.")
         
         -- Instantly deduct a life locally to prevent double-triggering before server responds
-        AuroraLife.Client.lives = AuroraLife.Client.lives - 1
+        SVRPLife.Client.lives = SVRPLife.Client.lives - 1
         
         -- Tell server to deduct a life
-        sendClientCommand(player, AuroraLife.MODULE, AuroraLife.CMD_CONSUME_LIFE, {})
+        sendClientCommand(player, SVRPLife.MODULE, SVRPLife.CMD_CONSUME_LIFE, {})
     end
 end
-Events.OnPlayerUpdate.Add(AuroraLife.Client.checkPlayerHealth)
+Events.OnPlayerUpdate.Add(SVRPLife.Client.checkPlayerHealth)
 
 -- ============================================================
 -- UI Hook: Draw Lives on Character Info Screen
 -- ============================================================
-if AuroraLife.Client.initializeUIHooks then
-    Events.OnGameStart.Remove(AuroraLife.Client.initializeUIHooks)
+if SVRPLife.Client.initializeUIHooks then
+    Events.OnGameStart.Remove(SVRPLife.Client.initializeUIHooks)
 end
 
-AuroraLife.Client.initializeUIHooks = function()
+SVRPLife.Client.initializeUIHooks = function()
     if not ISCharacterScreen then return end
-    if ISCharacterScreen.AuroraLifeHooked then return end
-    ISCharacterScreen.AuroraLifeHooked = true
+    if ISCharacterScreen.SVRPLifeHooked then return end
+    ISCharacterScreen.SVRPLifeHooked = true
 
     local original_ISCharacterScreen_render = ISCharacterScreen.render
     function ISCharacterScreen:render()
@@ -428,8 +428,8 @@ AuroraLife.Client.initializeUIHooks = function()
 
         -- Only draw if we are rendering the local player's info tab
         if self.char and self.char == getPlayer() then
-            local lives = AuroraLife.Client.lives
-            local maxLives = AuroraLife.Client.maxLives
+            local lives = SVRPLife.Client.lives
+            local maxLives = SVRPLife.Client.maxLives
 
             if lives ~= nil and maxLives ~= nil then
                 -- Calculate X coordinate dynamically to match vanilla layout
@@ -438,12 +438,13 @@ AuroraLife.Client.initializeUIHooks = function()
                 local textWid3 = getTextManager():MeasureStringX(UIFont.Small, getText("IGUI_char_Survived_For") or "Survived For")
                 local x = 20 + math.max(textWid1, math.max(textWid2, textWid3))
 
-                -- Calculate the exact Z coordinate where vanilla finished drawing
-                -- The literatureButton ("Discovered Recipes and Media") is at the bottom of the stat list
-                local z = self.literatureButton:getBottom() + 15
+                -- Calculate the exact Z coordinate where vanilla finished drawing.
+                -- Vanilla's render() ends by setting the parent height to the bottom of the last drawn element + 10.
+                -- Using self:getHeight() - 10 ensures we draw safely below all vanilla stats and other mods.
+                local z = self:getHeight() - 10
                 local BUTTON_HGT = math.max(25, getTextManager():getFontHeight(UIFont.Small) + 3 * 2)
                 
-                -- Draw the AuroraLife counter precisely underneath the last drawn vanilla stat
+                -- Draw the SVRPLife counter precisely underneath the last drawn vanilla stat
                 self:drawTextRight("Lives Remaining", x, z, 1, 1, 1, 1, UIFont.Small)
                 
                 -- Color code the lives text: Green if plenty, Orange if low, Red if 0
@@ -456,12 +457,11 @@ AuroraLife.Client.initializeUIHooks = function()
                 
                 self:drawText(tostring(lives) .. " / " .. tostring(maxLives), x + 10, z, r, g, b, 1.0, UIFont.Small)
                 
-                -- Push the window height down so it doesn't clip our new text or the avatar
-                local finalHeight = math.max(z + BUTTON_HGT + 10, self.avatarY + self.avatarHeight + 10 + 2)
-                self:setHeightAndParentHeight(finalHeight)
+                -- Push the window height down so it doesn't clip our new text
+                self:setHeightAndParentHeight(self:getHeight() + BUTTON_HGT)
             end
         end
     end
 end
 
-Events.OnGameStart.Add(AuroraLife.Client.initializeUIHooks)
+Events.OnGameStart.Add(SVRPLife.Client.initializeUIHooks)

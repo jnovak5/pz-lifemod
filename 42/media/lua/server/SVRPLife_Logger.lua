@@ -1,15 +1,15 @@
 -- ============================================================
--- AuroraLife_Logger.lua
+-- SVRPLife_Logger.lua
 -- Server-side structured logging.
 -- All output goes to server console AND a flat log file.
 -- Never sent to clients.
 -- ============================================================
 
-require "AuroraLife_Shared"
+require "SVRPLife_Shared"
 
-AuroraLife.Logger = AuroraLife.Logger or {}
+SVRPLife.Logger = SVRPLife.Logger or {}
 
-local LOG = AuroraLife.LOG_TAG
+local LOG = SVRPLife.LOG_TAG
 
 -- ── Internal: write one line to console + log file ───────────
 local function writeLine(line)
@@ -22,7 +22,7 @@ local function writeLine(line)
         -- We use a simple approach: write via fileWrite helper if available,
         -- otherwise fall back to io.open (works on dedicated servers)
         local path = getModFileRecordFileFullPath and
-            getModFileRecordFileFullPath("AuroraLife_log.txt") or
+            getModFileRecordFileFullPath("SVRPLife_log.txt") or
             nil
 
         if path then
@@ -40,8 +40,8 @@ local function writeLine(line)
 end
 
 -- ── Public: generic log ───────────────────────────────────────
-function AuroraLife.Logger.log(category, message)
-    local ts  = AuroraLife.timestamp()
+function SVRPLife.Logger.log(category, message)
+    local ts  = SVRPLife.timestamp()
     local line = string.format("%s [%s] %s | %s", LOG, category, ts, message)
     writeLine(line)
 end
@@ -50,7 +50,7 @@ end
 -- record        = the player's DataStore record AFTER update
 -- previousLives = lives count before deduction
 -- cause         = string or "unknown"
-function AuroraLife.Logger.logDeath(record, previousLives, cause)
+function SVRPLife.Logger.logDeath(record, previousLives, cause)
     local pos = "N/A"
     if record.lastDeath then
         pos = string.format("(%d,%d,%d)",
@@ -68,11 +68,11 @@ function AuroraLife.Logger.logDeath(record, previousLives, cause)
         pos,
         tostring(cause or "unknown")
     )
-    AuroraLife.Logger.log("DEATH", msg)
+    SVRPLife.Logger.log("DEATH", msg)
 end
 
 -- ── Public: admin action ──────────────────────────────────────
-function AuroraLife.Logger.logAdmin(adminName, action, targetSteamID, prevValue, newValue, reason)
+function SVRPLife.Logger.logAdmin(adminName, action, targetSteamID, prevValue, newValue, reason)
     local msg = string.format(
         "Admin=%s | Action=%s | Target=%s | Value=%s→%s | Reason=%s",
         tostring(adminName),
@@ -82,20 +82,20 @@ function AuroraLife.Logger.logAdmin(adminName, action, targetSteamID, prevValue,
         tostring(newValue),
         tostring(reason or "none")
     )
-    AuroraLife.Logger.log("ADMIN", msg)
+    SVRPLife.Logger.log("ADMIN", msg)
 end
 
 -- ── Public: system event ─────────────────────────────────────
-function AuroraLife.Logger.logSystem(message)
-    AuroraLife.Logger.log("SYSTEM", message)
+function SVRPLife.Logger.logSystem(message)
+    SVRPLife.Logger.log("SYSTEM", message)
 end
 
 -- ── Public: warning ───────────────────────────────────────────
-function AuroraLife.Logger.logWarn(message)
-    AuroraLife.Logger.log("WARN", message)
+function SVRPLife.Logger.logWarn(message)
+    SVRPLife.Logger.log("WARN", message)
 end
 
 -- ── Public: error ─────────────────────────────────────────────
-function AuroraLife.Logger.logError(message)
-    AuroraLife.Logger.log("ERROR", message)
+function SVRPLife.Logger.logError(message)
+    SVRPLife.Logger.log("ERROR", message)
 end

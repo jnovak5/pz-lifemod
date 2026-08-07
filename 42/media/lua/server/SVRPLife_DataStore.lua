@@ -1,17 +1,17 @@
 -- ============================================================
--- AuroraLife_DataStore.lua
+-- SVRPLife_DataStore.lua
 -- Server-side persistence layer.
 -- Handles: load, get, set, atomic save, backups, corruption recovery.
 -- NEVER trust or expose data to clients.
 -- ============================================================
 
-require "AuroraLife_Shared"
-require "AuroraLife_Logger"
+require "SVRPLife_Shared"
+require "SVRPLife_Logger"
 
-AuroraLife.DataStore = AuroraLife.DataStore or {}
+SVRPLife.DataStore = SVRPLife.DataStore or {}
 
-local DS = AuroraLife.DataStore
-local LOG = AuroraLife.Logger
+local DS = SVRPLife.DataStore
+local LOG = SVRPLife.Logger
 
 -- ── Internal state ────────────────────────────────────────────
 local _records    = {}           -- [username] = record table
@@ -30,7 +30,7 @@ local function _resolvePaths()
     if _dataPath then return end
 
     local ok, path = pcall(function()
-        return "AuroraLife_data.json"
+        return "SVRPLife_data.json"
     end)
 
     if ok and path then
@@ -139,7 +139,7 @@ local function _readFile(path)
     end
 
     -- Fallbacks
-    local reader = getModFileReader(AuroraLife.MODULE, path, false)
+    local reader = getModFileReader(SVRPLife.MODULE, path, false)
     if not reader then
         -- fallback for legacy data location
         reader = getFileReader(path, false)
@@ -165,19 +165,19 @@ local function _writeFile(path, content)
             if f then
                 f:write(content)
                 f:close()
-                print("[AuroraLife] DataStore: successfully saved to absolute path: " .. tostring(absPath))
+                print("[SVRPLife] DataStore: successfully saved to absolute path: " .. tostring(absPath))
                 return true
             end
         end
     end
 
     -- Fallback to Zomboid's API
-    local writer = getModFileWriter(AuroraLife.MODULE, path, true, false)
+    local writer = getModFileWriter(SVRPLife.MODULE, path, true, false)
     if not writer then return false, "cannot open file" end
     
     writer:write(content)
     writer:close()
-    print("[AuroraLife] DataStore: successfully saved using getModFileWriter to: " .. tostring(path))
+    print("[SVRPLife] DataStore: successfully saved using getModFileWriter to: " .. tostring(path))
     return true
 end
 
@@ -196,7 +196,7 @@ function DS.createBackup()
     local content = _readFile(_dataPath)
     if not content or content == "" then return end
 
-    local backupPath = "AuroraLife_backup_" .. tostring(DS._backupIndex % MAX_BACKUPS) .. ".json"
+    local backupPath = "SVRPLife_backup_" .. tostring(DS._backupIndex % MAX_BACKUPS) .. ".json"
     local ok, err = _writeFile(backupPath, content)
     if ok then
         LOG.logSystem("DataStore: created backup → " .. backupPath)
@@ -258,7 +258,7 @@ function DS._restoreFromBackup()
     -- We can't determine the newest without os.execute, so we just grab the first valid one.
     -- (This isn't perfect, but it's safe against total corruption).
     for i = 0, MAX_BACKUPS - 1 do
-        local backupPath = "AuroraLife_backup_" .. tostring(i) .. ".json"
+        local backupPath = "SVRPLife_backup_" .. tostring(i) .. ".json"
         local content = _readFile(backupPath)
         if content and content ~= "" then
             local parsed, perr = _decode(content)
@@ -306,7 +306,7 @@ end
 -- ============================================================
 function DS.ensureLoaded()
     if _loaded then return end
-    print("[AuroraLife] DataStore: lazy-loading (OnServerStarted did not fire).")
+    print("[SVRPLife] DataStore: lazy-loading (OnServerStarted did not fire).")
     DS.load()
 end
 
@@ -344,7 +344,7 @@ end
 -- ============================================================
 
 function DS.newRecord(username)
-    local startLives = AuroraLife.getSandboxCfg("StartingLives", AuroraLife.DEFAULT_STARTING_LIVES)
+    local startLives = SVRPLife.getSandboxCfg("StartingLives", SVRPLife.DEFAULT_STARTING_LIVES)
     return {
         username   = username or "unknown",
         lives      = startLives,

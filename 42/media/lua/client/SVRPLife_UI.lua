@@ -1,19 +1,19 @@
 -- ============================================================
--- AuroraLife_UI.lua
+-- SVRPLife_UI.lua
 -- Client-side admin context menu.
 -- Visible ONLY to players with admin/moderator access.
 -- All sensitive operations are validated server-side.
 -- ============================================================
 
-require "AuroraLife_Shared"
+require "SVRPLife_Shared"
 
-AuroraLife.UI = AuroraLife.UI or {}
+SVRPLife.UI = SVRPLife.UI or {}
 
 -- ── Internal: send an admin command to the server ─────────────
 local function sendAdminCmd(command, targetName, extraArgs)
     local args = extraArgs or {}
     args.targetName = targetName
-    sendClientCommand(getPlayer(), AuroraLife.MODULE, command, args)
+    sendClientCommand(getPlayer(), SVRPLife.MODULE, command, args)
 end
 
 -- ── Internal: open a numeric input dialog ────────────────────
@@ -42,33 +42,33 @@ local function openNumericDialog(title, onConfirm)
 end
 
 -- ============================================================
--- Build the AuroraLife sub-menu for a given online target player
+-- Build the SVRPLife sub-menu for a given online target player
 -- ============================================================
 local function buildSubMenu(context, targetPlayer, localPlayer)
     local targetName = tostring(targetPlayer:getUsername())
 
     -- Create submenu — use the standard PZ context menu pattern
-    local option  = context:addOption("[AuroraLife] " .. targetName)
+    local option  = context:addOption("[SVRPLife] " .. targetName)
     local subMenu = context:getNew(context)
     context:addSubMenu(option, subMenu)
 
     -- ── View Lives ───────────────────────────────────────────
     subMenu:addOption("View Lives", localPlayer, function()
-        sendAdminCmd(AuroraLife.CMD_ADMIN_VIEW, targetName)
+        sendAdminCmd(SVRPLife.CMD_ADMIN_VIEW, targetName)
     end)
 
     -- ── Add Life ─────────────────────────────────────────────
     subMenu:addOption("Add Life (+1)", localPlayer, function()
-        sendAdminCmd(AuroraLife.CMD_ADMIN_SET, targetName, {
-            action = AuroraLife.ACTION_ADD,
+        sendAdminCmd(SVRPLife.CMD_ADMIN_SET, targetName, {
+            action = SVRPLife.ACTION_ADD,
             amount = 1,
         })
     end)
 
     -- ── Remove Life ──────────────────────────────────────────
     subMenu:addOption("Remove Life (-1)", localPlayer, function()
-        sendAdminCmd(AuroraLife.CMD_ADMIN_SET, targetName, {
-            action = AuroraLife.ACTION_REMOVE,
+        sendAdminCmd(SVRPLife.CMD_ADMIN_SET, targetName, {
+            action = SVRPLife.ACTION_REMOVE,
             amount = 1,
         })
     end)
@@ -76,8 +76,8 @@ local function buildSubMenu(context, targetPlayer, localPlayer)
     -- ── Set Lives (opens input dialog) ───────────────────────
     subMenu:addOption("Set Lives...", localPlayer, function()
         openNumericDialog("Set lives for " .. targetName .. ":", function(amount)
-            sendAdminCmd(AuroraLife.CMD_ADMIN_SET, targetName, {
-                action = AuroraLife.ACTION_SET,
+            sendAdminCmd(SVRPLife.CMD_ADMIN_SET, targetName, {
+                action = SVRPLife.ACTION_SET,
                 amount = amount,
             })
         end)
@@ -88,16 +88,16 @@ end
 -- OnFillWorldObjectContextMenu — inject menu on right-click
 -- Signature: playerIndex, context, worldObjects, test
 -- ============================================================
-if AuroraLife.UI.onFillWorldObjectContextMenu then
-    Events.OnFillWorldObjectContextMenu.Remove(AuroraLife.UI.onFillWorldObjectContextMenu)
+if SVRPLife.UI.onFillWorldObjectContextMenu then
+    Events.OnFillWorldObjectContextMenu.Remove(SVRPLife.UI.onFillWorldObjectContextMenu)
 end
 
-AuroraLife.UI.onFillWorldObjectContextMenu = function(playerIndex, context, worldObjects, test)
+SVRPLife.UI.onFillWorldObjectContextMenu = function(playerIndex, context, worldObjects, test)
     if test then return end
     if not worldObjects then return end
     local localPlayer = getSpecificPlayer(playerIndex)
     if not localPlayer then return end
-    if not AuroraLife.isAuthorised(localPlayer) then return end
+    if not SVRPLife.isAuthorised(localPlayer) then return end
 
     -- Wrap everything in pcall so context menu errors don't break the game
     local ok, err = pcall(function()
@@ -127,11 +127,11 @@ AuroraLife.UI.onFillWorldObjectContextMenu = function(playerIndex, context, worl
     end)
 
     if not ok then
-        print("[AuroraLife] Context menu error: " .. tostring(err))
+        print("[SVRPLife] Context menu error: " .. tostring(err))
     end
 end
 
 -- ============================================================
 -- Register event
 -- ============================================================
-Events.OnFillWorldObjectContextMenu.Add(AuroraLife.UI.onFillWorldObjectContextMenu)
+Events.OnFillWorldObjectContextMenu.Add(SVRPLife.UI.onFillWorldObjectContextMenu)

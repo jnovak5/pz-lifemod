@@ -1,19 +1,19 @@
 -- ============================================================
--- AuroraLife_Admin.lua
+-- SVRPLife_Admin.lua
 -- Server-side administration enforcement.
 -- Handles: OnPlayerConnect gate, new player enrolment,
 --          whitelist removal on elimination, and admin operations.
 -- ============================================================
 
-require "AuroraLife_Shared"
-require "AuroraLife_DataStore"
-require "AuroraLife_Logger"
+require "SVRPLife_Shared"
+require "SVRPLife_DataStore"
+require "SVRPLife_Logger"
 
-AuroraLife.Admin = AuroraLife.Admin or {}
+SVRPLife.Admin = SVRPLife.Admin or {}
 
-local Admin = AuroraLife.Admin
-local DS  = AuroraLife.DataStore
-local LOG = AuroraLife.Logger
+local Admin = SVRPLife.Admin
+local DS  = SVRPLife.DataStore
+local LOG = SVRPLife.Logger
 
 
 -- ============================================================
@@ -22,9 +22,9 @@ local LOG = AuroraLife.Logger
 -- username = last-known username string (display name, not SteamID)
 -- ============================================================
 local function attemptWhitelistRemoval(username)
-    local enabled = AuroraLife.getSandboxCfg(
+    local enabled = SVRPLife.getSandboxCfg(
         "RemoveFromWhitelistOnElimination",
-        AuroraLife.DEFAULT_REMOVE_WHITELIST_ON_ELIMINATION
+        SVRPLife.DEFAULT_REMOVE_WHITELIST_ON_ELIMINATION
     )
     if not enabled then return end
 
@@ -52,11 +52,11 @@ local function attemptWhitelistRemoval(username)
     -- One username per line.
     local ok2 = pcall(function()
         -- Resolve the whitelist path using the same base directory as data files
-        local basePath = getModFileRecordFileFullPath("AuroraLife_data.json")
+        local basePath = getModFileRecordFileFullPath("SVRPLife_data.json")
         if not basePath then error("cannot resolve base path") end
 
         -- Walk up to the Zomboid save root and look for *.whitelist
-        -- DataStore path is something like: .../Zomboid/Lua/AuroraLife_data.json
+        -- DataStore path is something like: .../Zomboid/Lua/SVRPLife_data.json
         -- Whitelist is:                      .../Zomboid/Server/<name>.whitelist
         local saveRoot = basePath:match("(.+)[/\\]Lua[/\\]")
         if not saveRoot then error("cannot find save root") end
@@ -115,9 +115,9 @@ local function applyEliminationEffects(record, player)
     -- Whitelist removal (online or offline — uses username from record)
     attemptWhitelistRemoval(record.username)
 
-    local msgEnabled = AuroraLife.getSandboxCfg(
+    local msgEnabled = SVRPLife.getSandboxCfg(
         "EnablePrivateDeathMessage",
-        AuroraLife.DEFAULT_PRIVATE_DEATH_MESSAGE
+        SVRPLife.DEFAULT_PRIVATE_DEATH_MESSAGE
     )
 
     -- If the player is currently online, notify them. Do not kick them.
@@ -128,7 +128,7 @@ local function applyEliminationEffects(record, player)
             if p and p:getUsername():lower() == record.username:lower() then
                 if msgEnabled then
                     local msg = "An Admin has eliminated you. Your current run is over."
-                    sendServerCommand(p, AuroraLife.MODULE, AuroraLife.CMD_ELIMINATED, { message = msg })
+                    sendServerCommand(p, SVRPLife.MODULE, SVRPLife.CMD_ELIMINATED, { message = msg })
                 end
                 break
             end
@@ -157,9 +157,9 @@ end
 -- ============================================================
 function Admin.onPlayerConnect(player)
     -- MP-only guard
-    if not AuroraLife.isMultiplayerSession() then return end
+    if not SVRPLife.isMultiplayerSession() then return end
 
-    if not AuroraLife.getSandboxCfg("EnableSystem", AuroraLife.DEFAULT_ENABLE_SYSTEM) then
+    if not SVRPLife.getSandboxCfg("EnableSystem", SVRPLife.DEFAULT_ENABLE_SYSTEM) then
         return
     end
 
@@ -186,7 +186,7 @@ function Admin.onPlayerConnect(player)
         DS.saveDeferred()
         LOG.logSystem("Admin: new player enrolled — User=" .. username)
         
-        sendServerCommand(player, AuroraLife.MODULE, AuroraLife.CMD_LIFE_UPDATE, {
+        sendServerCommand(player, SVRPLife.MODULE, SVRPLife.CMD_LIFE_UPDATE, {
             lives    = record.lives,
             maxLives = record.maxLives,
         })
@@ -201,10 +201,10 @@ function Admin.onPlayerConnect(player)
     if record.eliminated then
         LOG.logWarn("Admin: eliminated player reconnected — User=" .. username)
 
-        local msgEnabled = AuroraLife.getSandboxCfg("EnablePrivateDeathMessage", AuroraLife.DEFAULT_PRIVATE_DEATH_MESSAGE)
+        local msgEnabled = SVRPLife.getSandboxCfg("EnablePrivateDeathMessage", SVRPLife.DEFAULT_PRIVATE_DEATH_MESSAGE)
         if msgEnabled then
             local msg = "You have been eliminated on this server. You must create a new character to continue playing."
-            sendServerCommand(player, AuroraLife.MODULE, AuroraLife.CMD_ELIMINATED, { message = msg })
+            sendServerCommand(player, SVRPLife.MODULE, SVRPLife.CMD_ELIMINATED, { message = msg })
         end
         -- Removed: Connection rejection / Kicking. They can now simply make a new character.
     end
@@ -212,9 +212,9 @@ function Admin.onPlayerConnect(player)
     DS.setRecord(username, record)
     DS.saveDeferred()
     
-    sendServerCommand(player, AuroraLife.MODULE, AuroraLife.CMD_LIFE_UPDATE, {
+    sendServerCommand(player, SVRPLife.MODULE, SVRPLife.CMD_LIFE_UPDATE, {
         lives    = record.lives,
-        maxLives = record.maxLives or AuroraLife.getSandboxCfg("StartingLives", AuroraLife.DEFAULT_STARTING_LIVES) or 5,
+        maxLives = record.maxLives or SVRPLife.getSandboxCfg("StartingLives", SVRPLife.DEFAULT_STARTING_LIVES) or 5,
     })
 end
 
@@ -236,7 +236,7 @@ end
 -- ============================================================
 -- Execute an admin operation (called from Commands and UI router)
 -- adminPlayer   = IsoPlayer performing the action
--- action        = AuroraLife.ACTION_* constant
+-- action        = SVRPLife.ACTION_* constant
 -- targetUsername = string username of the target
 -- amount        = number (optional, for add/remove/set)
 -- reason        = string (optional, for logging)
@@ -244,7 +244,7 @@ end
 -- ============================================================
 function Admin.executeOperation(adminPlayer, action, targetUsername, amount, reason)
     -- Double-check server-side admin authorisation
-    if not AuroraLife.isAuthorised(adminPlayer) then
+    if not SVRPLife.isAuthorised(adminPlayer) then
         return false, "Access denied: insufficient permissions."
     end
 
@@ -255,12 +255,12 @@ function Admin.executeOperation(adminPlayer, action, targetUsername, amount, rea
     local adminName = tostring(adminPlayer:getUsername())
     local record    = DS.getRecord(targetUsername)
 
-    if not record and action ~= AuroraLife.ACTION_VIEW then
+    if not record and action ~= SVRPLife.ACTION_VIEW then
         return false, "No record found for player: " .. tostring(targetUsername)
     end
 
     -- ── VIEW ─────────────────────────────────────────────────
-    if action == AuroraLife.ACTION_VIEW then
+    if action == SVRPLife.ACTION_VIEW then
         if not record then
             return true, string.format("No record found for Username=%s", targetUsername)
         end
@@ -286,22 +286,22 @@ function Admin.executeOperation(adminPlayer, action, targetUsername, amount, rea
     local cap         = record.maxLives  -- admin add is capped at season starting amount
 
     -- ── ADD ──────────────────────────────────────────────────
-    if action == AuroraLife.ACTION_ADD then
-        record.lives = AuroraLife.clamp(record.lives + num, AuroraLife.MIN_LIVES, cap)
+    if action == SVRPLife.ACTION_ADD then
+        record.lives = SVRPLife.clamp(record.lives + num, SVRPLife.MIN_LIVES, cap)
         -- Restore from elimination if lives go positive
         if record.lives > 0 then record.eliminated = false end
 
     -- ── REMOVE ───────────────────────────────────────────────
-    elseif action == AuroraLife.ACTION_REMOVE then
-        record.lives = AuroraLife.clamp(record.lives - num, AuroraLife.MIN_LIVES, AuroraLife.MAX_LIVES_HARD_CAP)
+    elseif action == SVRPLife.ACTION_REMOVE then
+        record.lives = SVRPLife.clamp(record.lives - num, SVRPLife.MIN_LIVES, SVRPLife.MAX_LIVES_HARD_CAP)
         if record.lives <= 0 then
             record.lives      = 0
             record.eliminated = true
         end
 
     -- ── SET ──────────────────────────────────────────────────
-    elseif action == AuroraLife.ACTION_SET then
-        record.lives = AuroraLife.clamp(num, AuroraLife.MIN_LIVES, AuroraLife.MAX_LIVES_HARD_CAP)
+    elseif action == SVRPLife.ACTION_SET then
+        record.lives = SVRPLife.clamp(num, SVRPLife.MIN_LIVES, SVRPLife.MAX_LIVES_HARD_CAP)
         if record.lives <= 0 then
             record.lives      = 0
             record.eliminated = true
@@ -320,7 +320,7 @@ function Admin.executeOperation(adminPlayer, action, targetUsername, amount, rea
     -- Send update to client if they are online
     local onlinePlayer = findOnlinePlayer(targetUsername)
     if onlinePlayer then
-        sendServerCommand(onlinePlayer, AuroraLife.MODULE, AuroraLife.CMD_LIFE_UPDATE, {
+        sendServerCommand(onlinePlayer, SVRPLife.MODULE, SVRPLife.CMD_LIFE_UPDATE, {
             lives      = record.lives,
             maxLives   = record.maxLives,
             eliminated = record.eliminated,

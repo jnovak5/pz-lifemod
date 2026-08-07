@@ -1,70 +1,70 @@
 -- ============================================================
--- AuroraLife_Shared.lua
+-- SVRPLife_Shared.lua
 -- Shared constants, utilities, and version info.
 -- Loaded in BOTH server and client contexts.
 -- ============================================================
 
-AuroraLife = AuroraLife or {}
+SVRPLife = SVRPLife or {}
 
 -- ── Version ──────────────────────────────────────────────────
-AuroraLife.VERSION       = "1.0.0"
-AuroraLife.VERSION_INT   = 1000          -- integer for comparison checks
+SVRPLife.VERSION       = "1.0.0"
+SVRPLife.VERSION_INT   = 1000          -- integer for comparison checks
 
 -- ── Network module name (must be unique across all mods) ─────
-AuroraLife.MODULE        = "AuroraLife"
+SVRPLife.MODULE        = "SVRPLife"
 
 -- ── Network commands  (server → client) ──────────────────────
-AuroraLife.CMD_LIFE_UPDATE  = "notify_life_update"
-AuroraLife.CMD_ELIMINATED   = "notify_eliminated"
+SVRPLife.CMD_LIFE_UPDATE  = "notify_life_update"
+SVRPLife.CMD_ELIMINATED   = "notify_eliminated"
 
 -- ── Network commands (client → server) ───────────────────────
-AuroraLife.CMD_PLAYER_CONNECT = "player_connect"
-AuroraLife.CMD_REQUEST_LIVES  = "request_lives"
-AuroraLife.CMD_CONSUME_LIFE   = "consume_life"
-AuroraLife.CMD_NEW_CHARACTER  = "new_character"
-AuroraLife.CMD_SET_GODMODE    = "set_godmode"
-AuroraLife.CMD_HEAL_PLAYER    = "heal_player"
-AuroraLife.CMD_LOG_EVENT      = "log_event"
-AuroraLife.CMD_ADMIN_VIEW    = "admin_view"
-AuroraLife.CMD_ADMIN_SET     = "admin_set"
+SVRPLife.CMD_PLAYER_CONNECT = "player_connect"
+SVRPLife.CMD_REQUEST_LIVES  = "request_lives"
+SVRPLife.CMD_CONSUME_LIFE   = "consume_life"
+SVRPLife.CMD_NEW_CHARACTER  = "new_character"
+SVRPLife.CMD_SET_GODMODE    = "set_godmode"
+SVRPLife.CMD_HEAL_PLAYER    = "heal_player"
+SVRPLife.CMD_LOG_EVENT      = "log_event"
+SVRPLife.CMD_ADMIN_VIEW    = "admin_view"
+SVRPLife.CMD_ADMIN_SET     = "admin_set"
 
 -- ── Admin set actions ────────────────────────────────────────
-AuroraLife.ACTION_VIEW   = "view"
-AuroraLife.ACTION_ADD    = "add"
-AuroraLife.ACTION_REMOVE = "remove"
-AuroraLife.ACTION_SET    = "set"
+SVRPLife.ACTION_VIEW   = "view"
+SVRPLife.ACTION_ADD    = "add"
+SVRPLife.ACTION_REMOVE = "remove"
+SVRPLife.ACTION_SET    = "set"
 
 -- ── Access levels allowed to use admin commands ───────────────
 -- Build 42 access level strings.  Moderator included by default.
-AuroraLife.ADMIN_ACCESS_LEVELS = {
+SVRPLife.ADMIN_ACCESS_LEVELS = {
     ["admin"]     = true,
     ["moderator"] = true,
 }
 
 -- ── Hard limits ───────────────────────────────────────────────
-AuroraLife.MAX_LIVES_HARD_CAP = 99          -- absolute ceiling for any lives value
-AuroraLife.MIN_LIVES          = 0
+SVRPLife.MAX_LIVES_HARD_CAP = 99          -- absolute ceiling for any lives value
+SVRPLife.MIN_LIVES          = 0
 
 -- ── Death cooldown window (seconds) ──────────────────────────
 -- Duplicate OnPlayerDeath events within this window are suppressed.
-AuroraLife.DEATH_COOLDOWN_SECS = 5
+SVRPLife.DEATH_COOLDOWN_SECS = 5
 
 -- ── Logging prefix ───────────────────────────────────────────
-AuroraLife.LOG_TAG = "[AuroraLife]"
+SVRPLife.LOG_TAG = "[SVRPLife]"
 
 -- ── Default sandbox fallbacks (used when SandboxVars not ready)
-AuroraLife.DEFAULT_STARTING_LIVES                   = 2
-AuroraLife.DEFAULT_ENABLE_SYSTEM                    = true
-AuroraLife.DEFAULT_KICK_ON_ELIMINATION              = true
-AuroraLife.DEFAULT_PRIVATE_DEATH_MESSAGE            = true
-AuroraLife.DEFAULT_REMOVE_WHITELIST_ON_ELIMINATION  = false
+SVRPLife.DEFAULT_STARTING_LIVES                   = 2
+SVRPLife.DEFAULT_ENABLE_SYSTEM                    = true
+SVRPLife.DEFAULT_KICK_ON_ELIMINATION              = true
+SVRPLife.DEFAULT_PRIVATE_DEATH_MESSAGE            = true
+SVRPLife.DEFAULT_REMOVE_WHITELIST_ON_ELIMINATION  = false
 
 -- ============================================================
 -- Utility: safe sandbox config reader
 -- Returns the sandbox value or the supplied default.
 -- ============================================================
-function AuroraLife.getSandboxCfg(key, default)
-    local ok, sv = pcall(function() return SandboxVars.AuroraLife end)
+function SVRPLife.getSandboxCfg(key, default)
+    local ok, sv = pcall(function() return SandboxVars.SVRPLife end)
     if ok and sv and sv[key] ~= nil then
         return sv[key]
     end
@@ -75,20 +75,20 @@ end
 -- Utility: check whether a player object has admin access
 -- Works both client-side (own player) and server-side.
 -- ============================================================
-function AuroraLife.isAuthorised(player)
+function SVRPLife.isAuthorised(player)
     if not player then return false end
     -- Allow full access in singleplayer for testing
     if not isClient() and not isServer() then return true end
     
     local level = player:getAccessLevel()
     if not level then return false end
-    return AuroraLife.ADMIN_ACCESS_LEVELS[tostring(level):lower()] == true
+    return SVRPLife.ADMIN_ACCESS_LEVELS[tostring(level):lower()] == true
 end
 
 -- ============================================================
 -- Utility: clamp integer to [lo, hi]
 -- ============================================================
-function AuroraLife.clamp(value, lo, hi)
+function SVRPLife.clamp(value, lo, hi)
     return math.max(lo, math.min(hi, value))
 end
 
@@ -97,7 +97,7 @@ end
 -- Server-side: isMultiplayer() exists in PZ Build 42.
 -- Used to auto-disable the system in singleplayer.
 -- ============================================================
-function AuroraLife.isMultiplayerSession()
+function SVRPLife.isMultiplayerSession()
     local ok, result = pcall(function()
         return isMultiplayer and isMultiplayer()
     end)
@@ -108,7 +108,7 @@ end
 -- Utility: ISO-8601 timestamp string (server-side only)
 -- Falls back to epoch seconds on client.
 -- ============================================================
-function AuroraLife.timestamp()
+function SVRPLife.timestamp()
     -- getGameTime():getRealworldSecondsSinceEpoch() may not exist on all builds;
     -- use os.date as a reliable cross-platform fallback.
     local ok, result = pcall(function()

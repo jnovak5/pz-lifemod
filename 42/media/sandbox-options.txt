@@ -4,8 +4,8 @@ VERSION = 1,
 option EnableSystem {
     type        = boolean,
     default     = true,
-    page        = AuroraLife,
-    translation = AuroraLife_EnableSystem,
+    page        = SVRPLife,
+    translation = SVRPLife_EnableSystem,
 }
 
 option StartingLives {
@@ -13,29 +13,29 @@ option StartingLives {
     default     = 2,
     min         = 1,
     max         = 99,
-    page        = AuroraLife,
-    translation = AuroraLife_StartingLives,
+    page        = SVRPLife,
+    translation = SVRPLife_StartingLives,
 }
 
 option KickOnElimination {
     type        = boolean,
     default     = true,
-    page        = AuroraLife,
-    translation = AuroraLife_KickOnElimination,
+    page        = SVRPLife,
+    translation = SVRPLife_KickOnElimination,
 }
 
 option EnablePrivateDeathMessage {
     type        = boolean,
     default     = true,
-    page        = AuroraLife,
-    translation = AuroraLife_EnablePrivateDeathMessage,
+    page        = SVRPLife,
+    translation = SVRPLife_EnablePrivateDeathMessage,
 }
 
 option RemoveFromWhitelistOnElimination {
     type        = boolean,
     default     = false,
-    page        = AuroraLife,
-    translation = AuroraLife_RemoveFromWhitelistOnElimination,
+    page        = SVRPLife,
+    translation = SVRPLife_RemoveFromWhitelistOnElimination,
 }
 
 option RestoreLives {
@@ -43,6 +43,6 @@ option RestoreLives {
     default     = 1,
     min         = 1,
     max         = 99,
-    page        = AuroraLife,
-    translation = AuroraLife_RestoreLives,
+    page        = SVRPLife,
+    translation = SVRPLife_RestoreLives,
 }
